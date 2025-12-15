@@ -13,10 +13,17 @@ if ! command -v docker &> /dev/null; then
     exit 1
 fi
 
-# Vérifier que docker-compose est installé
-if ! command -v docker-compose &> /dev/null; then
+# Détecter quelle version de Docker Compose est installée
+COMPOSE_CMD=""
+if docker compose version &> /dev/null; then
+    COMPOSE_CMD="docker compose"
+    echo "✓ Docker Compose détecté (version plugin)"
+elif command -v docker-compose &> /dev/null; then
+    COMPOSE_CMD="docker-compose"
+    echo "✓ Docker Compose détecté (version standalone)"
+else
     echo "❌ Docker Compose n'est pas installé."
-    echo "Installation: sudo pip3 install docker-compose"
+    echo "Installation: sudo apt install docker-compose-plugin"
     exit 1
 fi
 
@@ -57,34 +64,34 @@ read -p "Votre choix: " choice
 case $choice in
     1)
         echo "🔨 Build de l'image..."
-        docker-compose build
+        $COMPOSE_CMD build
         echo "🚀 Démarrage de l'agent..."
-        docker-compose up -d
+        $COMPOSE_CMD up -d
         echo "✅ Agent démarré !"
-        echo "Utilisez: docker-compose logs -f"
+        echo "Utilisez: $COMPOSE_CMD logs -f"
         ;;
     2)
         echo "🚀 Démarrage de l'agent..."
-        docker-compose up -d
+        $COMPOSE_CMD up -d
         echo "✅ Agent démarré !"
         ;;
     3)
         echo "📋 Logs (Ctrl+C pour quitter):"
-        docker-compose logs -f --tail=50
+        $COMPOSE_CMD logs -f --tail=50
         ;;
     4)
         echo "🛑 Arrêt de l'agent..."
-        docker-compose down
+        $COMPOSE_CMD down
         echo "✅ Agent arrêté"
         ;;
     5)
         echo "🔄 Redémarrage de l'agent..."
-        docker-compose restart
+        $COMPOSE_CMD restart
         echo "✅ Agent redémarré"
         ;;
     6)
         echo "📊 Statut:"
-        docker-compose ps
+        $COMPOSE_CMD ps
         ;;
     0)
         echo "Au revoir !"
