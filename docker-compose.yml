@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  trading-agent:
+    build: .
+    container_name: trading-agent
+    restart: unless-stopped
+
+    # Variables d'environnement depuis config.py
+    # Le conteneur utilise directement le fichier config.py monté
+
+    volumes:
+      # Monter le fichier de configuration
+      - ./config.py:/app/config.py:ro
+
+      # Volume pour les données persistantes (état des signaux)
+      - trading-data:/app/data
+
+      # Optionnel: monter les logs
+      - ./logs:/app/logs
+
+    # Politique de redémarrage
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+    # Limites de ressources (adapté pour Raspberry Pi)
+    mem_limit: 512m
+    cpus: 1.0
+
+    # Logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # Labels pour l'organisation
+    labels:
+      - "com.trading-agent.description=Agent de trading autonome"
+      - "com.trading-agent.version=1.0"
+
+volumes:
+  trading-data:
+    driver: local
