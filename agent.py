@@ -13,6 +13,7 @@ import os
 from datetime import datetime
 from mistralai import Mistral
 import config
+from paper_trading import PaperTradingManager
 
 # Fichier pour stocker l'état des signaux
 # Utilise /app/data dans Docker, sinon le répertoire courant
@@ -24,6 +25,13 @@ class TradingAgent:
         self.exchange = ccxt.binance()
         self.mistral_client = Mistral(api_key=config.MISTRAL_API_KEY)
         self.active_signals = self.load_state()
+
+        # Initialiser le paper trading si activé
+        if config.PAPER_TRADING_ENABLED:
+            self.paper_trading = PaperTradingManager()
+            print(f"📊 Paper Trading activé - Balance: ${self.paper_trading.balance:.2f}")
+        else:
+            self.paper_trading = None
 
     def load_state(self):
         """Charge l'état des signaux actifs depuis le fichier"""
@@ -206,50 +214,42 @@ class TradingAgent:
 
         signal = None
 
-        # Vérifier le croisement EMA 12/50
-        ema_cross_bullish = (analysis['ema_12_prev'] <= analysis['ema_50_prev'] and
-                            analysis['ema_12'] > analysis['ema_50']) or \
-                           (analysis['ema_12'] > analysis['ema_50'])  # EMA12 au-dessus d'EMA50
+        # Vérifier le croisement EMA 12/50 (OBLIGATOIRE)
+        ema_cross_bullish = analysis['ema_12'] > analysis['ema_50']  # EMA12 au-dessus d'EMA50
+        ema_cross_bearish = analysis['ema_12'] < analysis['ema_50']  # EMA12 en-dessous d'EMA50
 
-        ema_cross_bearish = (analysis['ema_12_prev'] >= analysis['ema_50_prev'] and
-                            analysis['ema_12'] < analysis['ema_50']) or \
-                           (analysis['ema_12'] < analysis['ema_50'])  # EMA12 en-dessous d'EMA50
-
-        # Conditions pour LONG
+        # Conditions pour LONG (sans EMA)
         long_conditions = [
             analysis['rsi'] < 40,
             analysis['price'] > analysis['ma_21'],
             analysis['macd'] > analysis['macd_signal'],
-            analysis['score'] >= config.MIN_CONFIDENCE_SCORE,
-            ema_cross_bullish  # CONDITION EMA OBLIGATOIRE
+            analysis['score'] >= config.MIN_CONFIDENCE_SCORE
         ]
 
-        # Conditions pour SHORT
+        # Conditions pour SHORT (sans EMA)
         short_conditions = [
             analysis['rsi'] > 60,
             analysis['price'] < analysis['ma_21'],
             analysis['macd'] < analysis['macd_signal'],
-            analysis['score'] >= config.MIN_CONFIDENCE_SCORE,
-            ema_cross_bearish  # CONDITION EMA OBLIGATOIRE
+            analysis['score'] >= config.MIN_CONFIDENCE_SCORE
         ]
 
-        # Conditions alternatives pour LONG (rebond sur support)
+        # Conditions alternatives pour LONG (rebond sur support, sans EMA)
         long_support = [
             analysis['price'] <= analysis['bb_low'] * 1.02,
             analysis['rsi'] < 35,
-            analysis['trend'] != "BAISSIERE",
-            ema_cross_bullish  # CONDITION EMA OBLIGATOIRE
+            analysis['trend'] != "BAISSIERE"
         ]
 
-        # Conditions alternatives pour SHORT (rejet de résistance)
+        # Conditions alternatives pour SHORT (rejet de résistance, sans EMA)
         short_resistance = [
             analysis['price'] >= analysis['bb_high'] * 0.98,
             analysis['rsi'] > 65,
-            analysis['trend'] != "HAUSSIERE",
-            ema_cross_bearish  # CONDITION EMA OBLIGATOIRE
+            analysis['trend'] != "HAUSSIERE"
         ]
 
-        if sum(long_conditions) >= 4 or sum(long_support) >= 3:
+        # VÉRIFICATION OBLIGATOIRE DE L'EMA + conditions
+        if ema_cross_bullish and (sum(long_conditions) >= 3 or sum(long_support) >= 2):
             signal = {
                 'type': 'LONG',
                 'entry': price,
@@ -257,7 +257,7 @@ class TradingAgent:
                 'sl': price - (atr * atr_multiplier_sl),
                 'confidence': analysis['score']
             }
-        elif sum(short_conditions) >= 4 or sum(short_resistance) >= 3:
+        elif ema_cross_bearish and (sum(short_conditions) >= 3 or sum(short_resistance) >= 2):
             signal = {
                 'type': 'SHORT',
                 'entry': price,
@@ -394,6 +394,12 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
         """Analyse toutes les cryptos et envoie des alertes si nécessaire"""
         print(f"\n{'='*70}")
         print(f"🔍 Scan du marché - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # Afficher le statut du paper trading
+        if self.paper_trading:
+            stats = self.paper_trading.get_statistics()
+            print(f"💰 Paper Trading: ${stats['current_balance']:.2f} | ROI: {stats['roi']:.2f}% | Trades: {stats['total_trades']} | Win Rate: {stats['win_rate']:.1f}%")
+
         print(f"{'='*70}\n")
 
         for symbol in config.SYMBOLS:
@@ -402,6 +408,20 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                 df = self.get_ohlcv_data(symbol)
                 df = self.calculate_indicators(df)
                 analysis = analyze_crypto(df, symbol)
+
+                # Mettre à jour les positions paper trading existantes
+                if self.paper_trading:
+                    current_price = analysis['price']
+                    closed_count = self.paper_trading.update_positions(symbol, current_price)
+
+                    # Si des positions ont été fermées, envoyer une notification
+                    if closed_count > 0:
+                        for position in self.paper_trading.closed_positions[-closed_count:]:
+                            if position['symbol'] == symbol:
+                                message = self.paper_trading.format_position_message(position, "CLOSED")
+                                title = f"{'🟢' if position['pnl_usdt'] > 0 else '🔴'} Position fermée - {symbol}"
+                                self.send_pushover_notification(title, message, priority=1)
+
                 signal = self.generate_trading_signal(analysis)
 
                 if signal:
@@ -424,6 +444,18 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                         if not self.is_trading_hours():
                             print(f"⏰ {symbol}: Signal {signal['type']} validé mais hors horaires de trading (Lun-Ven 9h-20h)")
                             continue
+
+                        # Ouvrir une position paper trading si activé
+                        if self.paper_trading:
+                            position, msg = self.paper_trading.open_position(signal, analysis)
+                            if position:
+                                print(f"📊 {symbol}: Position paper trading ouverte - ${position['size_usdt']:.2f}")
+                                # Envoyer notification de position ouverte
+                                pt_message = self.paper_trading.format_position_message(position, "OPENED")
+                                pt_title = f"📊 PAPER - {signal['type']} {symbol}"
+                                self.send_pushover_notification(pt_title, pt_message, priority=1)
+                            else:
+                                print(f"⚠️  {symbol}: Impossible d'ouvrir position paper trading - {msg}")
 
                         # Signal validé, envoi de l'alerte
                         message = f"""

@@ -4,6 +4,9 @@ config.py
 # État des signaux
 signals_state.json
 
+# Paper Trading
+paper_trading_history.json
+
 # Logs
 *.log
 agent.log
