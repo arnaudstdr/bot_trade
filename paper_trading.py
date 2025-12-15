@@ -10,9 +10,11 @@ import config
 
 class PaperTradingManager:
     def __init__(self):
-        self.track_file = config.PAPER_TRADING_TRACK_FILE
-        self.balance = config.PAPER_TRADING_INITIAL_BALANCE
-        self.initial_balance = config.PAPER_TRADING_INITIAL_BALANCE
+        # Valeurs par défaut si config manquante
+        self.track_file = getattr(config, 'PAPER_TRADING_TRACK_FILE', 'paper_trading_history.json')
+        initial_balance = getattr(config, 'PAPER_TRADING_INITIAL_BALANCE', 1000)
+        self.balance = initial_balance
+        self.initial_balance = initial_balance
         self.open_positions = []
         self.closed_positions = []
         self.load_state()
@@ -47,8 +49,9 @@ class PaperTradingManager:
 
     def can_open_position(self):
         """Vérifie si on peut ouvrir une nouvelle position"""
-        if len(self.open_positions) >= config.PAPER_TRADING_MAX_POSITIONS:
-            return False, f"Maximum de positions ouvertes atteint ({config.PAPER_TRADING_MAX_POSITIONS})"
+        max_positions = getattr(config, 'PAPER_TRADING_MAX_POSITIONS', 3)
+        if len(self.open_positions) >= max_positions:
+            return False, f"Maximum de positions ouvertes atteint ({max_positions})"
 
         if self.balance <= 0:
             return False, "Balance insuffisante"
@@ -62,7 +65,8 @@ class PaperTradingManager:
             return None, reason
 
         # Calculer la taille de position
-        position_size_usdt = self.balance * (config.PAPER_TRADING_POSITION_SIZE_PERCENT / 100)
+        position_size_percent = getattr(config, 'PAPER_TRADING_POSITION_SIZE_PERCENT', 2)
+        position_size_usdt = self.balance * (position_size_percent / 100)
         position_size_crypto = position_size_usdt / signal['entry']
 
         # Créer la position
@@ -229,7 +233,7 @@ Taille: ${position['size_usdt']:.2f} ({position['size_crypto']:.6f})
 R/R: 1:{position['risk_reward']:.2f}
 
 Balance: ${self.balance:.2f}
-Positions ouvertes: {len(self.open_positions)}/{config.PAPER_TRADING_MAX_POSITIONS}
+Positions ouvertes: {len(self.open_positions)}/{getattr(config, 'PAPER_TRADING_MAX_POSITIONS', 3)}
 """
         else:  # CLOSED
             emoji = "🟢" if position['pnl_usdt'] > 0 else "🔴"
@@ -260,8 +264,9 @@ Win rate: {(len([p for p in self.closed_positions if p['pnl_usdt'] > 0]) / len(s
 
     def reset(self):
         """Réinitialise le paper trading"""
-        self.balance = config.PAPER_TRADING_INITIAL_BALANCE
-        self.initial_balance = config.PAPER_TRADING_INITIAL_BALANCE
+        initial_balance = getattr(config, 'PAPER_TRADING_INITIAL_BALANCE', 1000)
+        self.balance = initial_balance
+        self.initial_balance = initial_balance
         self.open_positions = []
         self.closed_positions = []
         self.save_state()

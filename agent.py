@@ -27,7 +27,8 @@ class TradingAgent:
         self.active_signals = self.load_state()
 
         # Initialiser le paper trading si activé
-        if config.PAPER_TRADING_ENABLED:
+        paper_trading_enabled = getattr(config, 'PAPER_TRADING_ENABLED', False)
+        if paper_trading_enabled:
             self.paper_trading = PaperTradingManager()
             print(f"📊 Paper Trading activé - Balance: ${self.paper_trading.balance:.2f}")
         else:
