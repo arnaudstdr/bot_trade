@@ -71,6 +71,7 @@ class TradingAgent:
         df['MA_21'] = ta.trend.sma_indicator(df['close'], window=21)
         df['MA_50'] = ta.trend.sma_indicator(df['close'], window=50)
         df['EMA_12'] = ta.trend.ema_indicator(df['close'], window=12)
+        df['EMA_50'] = ta.trend.ema_indicator(df['close'], window=50)
 
         # RSI
         df['RSI'] = ta.momentum.rsi(df['close'], window=14)
@@ -182,6 +183,10 @@ class TradingAgent:
             'macd_signal': last['MACD_Signal'],
             'ma_21': last['MA_21'],
             'ma_50': last['MA_50'],
+            'ema_12': last['EMA_12'],
+            'ema_50': last['EMA_50'],
+            'ema_12_prev': prev['EMA_12'],
+            'ema_50_prev': prev['EMA_50'],
             'bb_low': last['BB_Low'],
             'bb_high': last['BB_High'],
             'atr': last['ATR'],
@@ -201,12 +206,22 @@ class TradingAgent:
 
         signal = None
 
+        # Vérifier le croisement EMA 12/50
+        ema_cross_bullish = (analysis['ema_12_prev'] <= analysis['ema_50_prev'] and
+                            analysis['ema_12'] > analysis['ema_50']) or \
+                           (analysis['ema_12'] > analysis['ema_50'])  # EMA12 au-dessus d'EMA50
+
+        ema_cross_bearish = (analysis['ema_12_prev'] >= analysis['ema_50_prev'] and
+                            analysis['ema_12'] < analysis['ema_50']) or \
+                           (analysis['ema_12'] < analysis['ema_50'])  # EMA12 en-dessous d'EMA50
+
         # Conditions pour LONG
         long_conditions = [
             analysis['rsi'] < 40,
             analysis['price'] > analysis['ma_21'],
             analysis['macd'] > analysis['macd_signal'],
-            analysis['score'] >= config.MIN_CONFIDENCE_SCORE
+            analysis['score'] >= config.MIN_CONFIDENCE_SCORE,
+            ema_cross_bullish  # CONDITION EMA OBLIGATOIRE
         ]
 
         # Conditions pour SHORT
@@ -214,24 +229,27 @@ class TradingAgent:
             analysis['rsi'] > 60,
             analysis['price'] < analysis['ma_21'],
             analysis['macd'] < analysis['macd_signal'],
-            analysis['score'] >= config.MIN_CONFIDENCE_SCORE
+            analysis['score'] >= config.MIN_CONFIDENCE_SCORE,
+            ema_cross_bearish  # CONDITION EMA OBLIGATOIRE
         ]
 
         # Conditions alternatives pour LONG (rebond sur support)
         long_support = [
             analysis['price'] <= analysis['bb_low'] * 1.02,
             analysis['rsi'] < 35,
-            analysis['trend'] != "BAISSIERE"
+            analysis['trend'] != "BAISSIERE",
+            ema_cross_bullish  # CONDITION EMA OBLIGATOIRE
         ]
 
         # Conditions alternatives pour SHORT (rejet de résistance)
         short_resistance = [
             analysis['price'] >= analysis['bb_high'] * 0.98,
             analysis['rsi'] > 65,
-            analysis['trend'] != "HAUSSIERE"
+            analysis['trend'] != "HAUSSIERE",
+            ema_cross_bearish  # CONDITION EMA OBLIGATOIRE
         ]
 
-        if sum(long_conditions) >= 3 or sum(long_support) >= 2:
+        if sum(long_conditions) >= 4 or sum(long_support) >= 3:
             signal = {
                 'type': 'LONG',
                 'entry': price,
@@ -239,7 +257,7 @@ class TradingAgent:
                 'sl': price - (atr * atr_multiplier_sl),
                 'confidence': analysis['score']
             }
-        elif sum(short_conditions) >= 3 or sum(short_resistance) >= 2:
+        elif sum(short_conditions) >= 4 or sum(short_resistance) >= 3:
             signal = {
                 'type': 'SHORT',
                 'entry': price,
@@ -270,6 +288,9 @@ INDICATEURS TECHNIQUES:
 - MACD: {analysis['macd']:.4f} | Signal: {analysis['macd_signal']:.4f}
 - MA21: ${analysis['ma_21']:.4f}
 - MA50: ${analysis['ma_50']:.4f}
+- EMA12: ${analysis['ema_12']:.4f}
+- EMA50: ${analysis['ema_50']:.4f}
+- Croisement EMA: {'EMA12 > EMA50 (Haussier)' if analysis['ema_12'] > analysis['ema_50'] else 'EMA12 < EMA50 (Baissier)'}
 - Bollinger Bands: ${analysis['bb_low']:.4f} - ${analysis['bb_high']:.4f}
 - Volume: {analysis['volume']:.0f} (Moyenne: {analysis['volume_ma']:.0f})
 
@@ -550,6 +571,10 @@ def analyze_crypto(df, symbol):
         'macd_signal': last['MACD_Signal'],
         'ma_21': last['MA_21'],
         'ma_50': last['MA_50'],
+        'ema_12': last['EMA_12'],
+        'ema_50': last['EMA_50'],
+        'ema_12_prev': prev['EMA_12'],
+        'ema_50_prev': prev['EMA_50'],
         'bb_low': last['BB_Low'],
         'bb_high': last['BB_High'],
         'atr': last['ATR'],
