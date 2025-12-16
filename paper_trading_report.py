@@ -18,11 +18,15 @@ def print_report():
 
     # Statistiques générales
     print("\n┌─ RÉSUMÉ GÉNÉRAL " + "─"*62)
-    print(f"│ Balance initiale:  ${stats['initial_balance']:.2f}")
-    print(f"│ Balance actuelle:  ${stats['current_balance']:.2f}")
-    print(f"│ ROI:              {stats['roi']:+.2f}%")
-    print(f"│ P&L Total:        ${stats['total_pnl']:+.2f} ({stats['total_pnl_percent']:+.2f}%)")
-    print(f"│ Positions ouvertes: {stats['open_positions']}")
+    print(f"│ Balance initiale:      ${stats['initial_balance']:.2f}")
+    print(f"│ Balance libre:         ${stats['current_balance']:.2f}")
+    print(f"│ Capital en positions:  ${stats.get('open_positions_value', 0):.2f}")
+    print(f"│ P&L non réalisé:       ${stats.get('unrealized_pnl', 0):+.2f}")
+    print(f"│ Valeur portefeuille:   ${stats.get('total_portfolio_value', stats['current_balance']):.2f}")
+    print(f"│ ROI:                  {stats['roi']:+.2f}%")
+    print(f"│")
+    print(f"│ P&L réalisé (fermé):  ${stats['total_pnl']:+.2f} ({stats['total_pnl_percent']:+.2f}%)")
+    print(f"│ Positions ouvertes:    {stats['open_positions']}")
     print("└" + "─"*79)
 
     # Statistiques de trading

@@ -402,7 +402,8 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
         # Afficher le statut du paper trading
         if self.paper_trading:
             stats = self.paper_trading.get_statistics()
-            print(f"💰 Paper Trading: ${stats['current_balance']:.2f} | ROI: {stats['roi']:.2f}% | Trades: {stats['total_trades']} | Win Rate: {stats['win_rate']:.1f}%")
+            portfolio_value = stats.get('total_portfolio_value', stats['current_balance'])
+            print(f"💰 Paper Trading: ${portfolio_value:.2f} (Libre: ${stats['current_balance']:.2f}) | ROI: {stats['roi']:.2f}% | Trades: {stats['total_trades']} | Win Rate: {stats['win_rate']:.1f}%")
 
         print(f"{'='*70}\n")
 

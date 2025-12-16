@@ -88,6 +88,9 @@ class PaperTradingManager:
             'status': 'open'
         }
 
+        # Retirer le capital investi de la balance
+        self.balance -= position_size_usdt
+
         self.open_positions.append(position)
         self.save_state()
 
@@ -177,6 +180,11 @@ class PaperTradingManager:
 
     def get_statistics(self):
         """Calcule les statistiques de performance"""
+        # Calculer le capital total (balance libre + capital dans positions ouvertes + P&L non réalisé)
+        open_capital = sum(p['size_usdt'] for p in self.open_positions)
+        open_pnl = sum(p['pnl_usdt'] for p in self.open_positions)
+        total_portfolio_value = self.balance + open_capital + open_pnl
+
         if not self.closed_positions:
             return {
                 'total_trades': 0,
@@ -189,15 +197,18 @@ class PaperTradingManager:
                 'worst_trade': 0,
                 'open_positions': len(self.open_positions),
                 'current_balance': self.balance,
+                'total_portfolio_value': total_portfolio_value,
+                'open_positions_value': open_capital,
+                'unrealized_pnl': open_pnl,
                 'initial_balance': self.initial_balance,
-                'roi': 0
+                'roi': ((total_portfolio_value - self.initial_balance) / self.initial_balance) * 100
             }
 
         wins = [p for p in self.closed_positions if p['pnl_usdt'] > 0]
         losses = [p for p in self.closed_positions if p['pnl_usdt'] <= 0]
 
         total_pnl = sum(p['pnl_usdt'] for p in self.closed_positions)
-        roi = ((self.balance - self.initial_balance) / self.initial_balance) * 100
+        roi = ((total_portfolio_value - self.initial_balance) / self.initial_balance) * 100
 
         stats = {
             'total_trades': len(self.closed_positions),
@@ -212,6 +223,9 @@ class PaperTradingManager:
             'worst_trade': min(p['pnl_usdt'] for p in self.closed_positions) if self.closed_positions else 0,
             'open_positions': len(self.open_positions),
             'current_balance': self.balance,
+            'total_portfolio_value': total_portfolio_value,
+            'open_positions_value': open_capital,
+            'unrealized_pnl': open_pnl,
             'initial_balance': self.initial_balance,
             'roi': roi,
             'avg_trade_duration': sum(p.get('duration_hours', 0) for p in self.closed_positions) / len(self.closed_positions) if self.closed_positions else 0
@@ -238,6 +252,11 @@ Positions ouvertes: {len(self.open_positions)}/{getattr(config, 'PAPER_TRADING_M
 """
         else:  # CLOSED
             emoji = "🟢" if position['pnl_usdt'] > 0 else "🔴"
+
+            # Calculer la valeur totale du portefeuille
+            stats = self.get_statistics()
+            portfolio_value = stats.get('total_portfolio_value', self.balance)
+
             message = f"""
 {emoji} PAPER TRADING - Position fermée
 
@@ -249,7 +268,7 @@ Sortie: ${position['exit_price']:.4f}
 Durée: {position.get('duration_hours', 0):.1f}h
 
 P&L: ${position['pnl_usdt']:.2f} ({position['pnl_percent']:.2f}%)
-Balance: ${self.balance:.2f} (ROI: {((self.balance-self.initial_balance)/self.initial_balance*100):.2f}%)
+Portefeuille: ${portfolio_value:.2f} (ROI: {stats['roi']:.2f}%)
 
 Total trades: {len(self.closed_positions)}
 Win rate: {(len([p for p in self.closed_positions if p['pnl_usdt'] > 0]) / len(self.closed_positions) * 100):.1f}%
