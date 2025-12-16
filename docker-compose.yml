@@ -11,8 +11,8 @@ services:
       # Monter le fichier de configuration
       - ./config.py:/app/config.py:ro
 
-      # Volume pour les données persistantes (état des signaux)
-      - trading-data:/app/data
+      # Monter le répertoire data local (pour accès direct aux fichiers)
+      - ./data:/app/data
 
       # Optionnel: monter les logs
       - ./logs:/app/logs
@@ -39,7 +39,3 @@ services:
     labels:
       - "com.trading-agent.description=Agent de trading autonome"
       - "com.trading-agent.version=1.0"
-
-volumes:
-  trading-data:
-    driver: local

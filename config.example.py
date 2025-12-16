@@ -35,4 +35,4 @@ PAPER_TRADING_ENABLED = True  # Activer le trading simulé
 PAPER_TRADING_INITIAL_BALANCE = 1000  # Capital de départ en USDT
 PAPER_TRADING_POSITION_SIZE_PERCENT = 2  # % du capital par trade (2%)
 PAPER_TRADING_MAX_POSITIONS = 3  # Nombre max de positions simultanées
-PAPER_TRADING_TRACK_FILE = "paper_trading_history.json"  # Fichier d'historique
+PAPER_TRADING_TRACK_FILE = "data/paper_trading_history.json"  # Fichier d'historique

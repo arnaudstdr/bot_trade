@@ -1,11 +1,8 @@
 # Fichiers de configuration avec clés API
 config.py
 
-# État des signaux
-signals_state.json
-
-# Paper Trading
-paper_trading_history.json
+# Dossier de données (état des signaux et paper trading)
+data/
 
 # Logs
 *.log

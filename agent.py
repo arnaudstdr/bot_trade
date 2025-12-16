@@ -16,8 +16,11 @@ import config
 from paper_trading import PaperTradingManager
 
 # Fichier pour stocker l'état des signaux
-# Utilise /app/data dans Docker, sinon le répertoire courant
-DATA_DIR = "/app/data" if os.path.exists("/app/data") else "."
+# Utilise /app/data dans Docker, sinon ./data
+DATA_DIR = "/app/data" if os.path.exists("/app/data") else "data"
+# Créer le dossier data s'il n'existe pas
+if not os.path.exists(DATA_DIR):
+    os.makedirs(DATA_DIR)
 STATE_FILE = os.path.join(DATA_DIR, "signals_state.json")
 
 class TradingAgent:
