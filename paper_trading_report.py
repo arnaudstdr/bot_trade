@@ -46,8 +46,14 @@ def print_report():
         if pt.open_positions:
             print("\n┌─ POSITIONS OUVERTES " + "─"*57)
             for pos in pt.open_positions:
-                emoji = "🟢" if pos['pnl_usdt'] > 0 else "🔴"
-                print(f"│ {emoji} {pos['type']:<5} {pos['symbol']:<12} Entrée: ${pos['entry_price']:.4f} | P&L: ${pos['pnl_usdt']:+.2f} ({pos['pnl_percent']:+.2f}%)")
+                emoji = "🟢" if pos.get('pnl_usdt', 0) > 0 else "🔴"
+                leverage = pos.get('leverage', 1)
+                pnl_on_margin = pos.get('pnl_percent_on_margin', pos.get('pnl_percent', 0))
+
+                leverage_str = f" [{leverage}x]" if leverage > 1 else ""
+                liquidation = f" | Liq: ${pos['liquidation_price']:.4f}" if pos.get('liquidation_price') else ""
+
+                print(f"│ {emoji} {pos['type']:<5}{leverage_str:<6} {pos['symbol']:<12} Entrée: ${pos['entry_price']:.4f} | P&L: ${pos.get('pnl_usdt', 0):+.2f} ({pnl_on_margin:+.2f}%){liquidation}")
             print("└" + "─"*79)
 
         # Derniers trades fermés
@@ -55,9 +61,18 @@ def print_report():
             print("\n┌─ DERNIERS TRADES FERMÉS " + "─"*53)
             last_trades = pt.closed_positions[-10:]  # 10 derniers
             for pos in reversed(last_trades):
-                emoji = "🟢" if pos['pnl_usdt'] > 0 else "🔴"
+                # Emoji spécial pour liquidation
+                if pos.get('close_reason') == 'LIQUIDATED':
+                    emoji = "💀"
+                else:
+                    emoji = "🟢" if pos['pnl_usdt'] > 0 else "🔴"
+
+                leverage = pos.get('leverage', 1)
+                pnl_on_margin = pos.get('pnl_percent_on_margin', pos.get('pnl_percent', 0))
+                leverage_str = f" [{leverage}x]" if leverage > 1 else ""
+
                 reason = pos['close_reason'].replace('_', ' ')
-                print(f"│ {emoji} {pos['type']:<5} {pos['symbol']:<12} {reason:<12} P&L: ${pos['pnl_usdt']:+.2f} ({pos['pnl_percent']:+.2f}%)")
+                print(f"│ {emoji} {pos['type']:<5}{leverage_str:<6} {pos['symbol']:<12} {reason:<12} P&L: ${pos['pnl_usdt']:+.2f} ({pnl_on_margin:+.2f}%)")
             print("└" + "─"*79)
 
         # Analyse par symbole

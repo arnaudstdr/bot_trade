@@ -36,3 +36,8 @@ PAPER_TRADING_INITIAL_BALANCE = 1000  # Capital de départ en USDT
 PAPER_TRADING_POSITION_SIZE_PERCENT = 2  # % du capital par trade (2%)
 PAPER_TRADING_MAX_POSITIONS = 3  # Nombre max de positions simultanées
 PAPER_TRADING_TRACK_FILE = "data/paper_trading_history.json"  # Fichier d'historique
+
+# Effet de levier (Futures)
+PAPER_TRADING_LEVERAGE = 5  # Effet de levier (1 = pas de levier, 5 = 5x)
+PAPER_TRADING_SIMULATE_LIQUIDATION = True  # Simuler les liquidations
+PAPER_TRADING_LIQUIDATION_THRESHOLD = 0.8  # Seuil de liquidation (80% de perte sur la marge)

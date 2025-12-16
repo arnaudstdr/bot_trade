@@ -64,10 +64,28 @@ class PaperTradingManager:
         if not can_open:
             return None, reason
 
-        # Calculer la taille de position
+        # Récupérer les paramètres de levier
+        leverage = getattr(config, 'PAPER_TRADING_LEVERAGE', 1)
+        simulate_liquidation = getattr(config, 'PAPER_TRADING_SIMULATE_LIQUIDATION', True)
+        liquidation_threshold = getattr(config, 'PAPER_TRADING_LIQUIDATION_THRESHOLD', 0.8)
+
+        # Calculer la marge requise (capital à investir)
         position_size_percent = getattr(config, 'PAPER_TRADING_POSITION_SIZE_PERCENT', 2)
-        position_size_usdt = self.balance * (position_size_percent / 100)
+        margin_usdt = self.balance * (position_size_percent / 100)
+
+        # Calculer la taille de position avec effet de levier
+        position_size_usdt = margin_usdt * leverage
         position_size_crypto = position_size_usdt / signal['entry']
+
+        # Calculer le prix de liquidation
+        liquidation_price = None
+        if simulate_liquidation and leverage > 1:
+            if signal['type'] == 'LONG':
+                # Pour un LONG, liquidation si le prix descend trop
+                liquidation_price = signal['entry'] * (1 - (liquidation_threshold / leverage))
+            else:  # SHORT
+                # Pour un SHORT, liquidation si le prix monte trop
+                liquidation_price = signal['entry'] * (1 + (liquidation_threshold / leverage))
 
         # Créer la position
         position = {
@@ -78,8 +96,11 @@ class PaperTradingManager:
             'current_price': signal['entry'],
             'tp': signal['tp'],
             'sl': signal['sl'],
-            'size_usdt': position_size_usdt,
+            'size_usdt': position_size_usdt,  # Taille totale avec levier
+            'margin_usdt': margin_usdt,  # Capital réellement investi
             'size_crypto': position_size_crypto,
+            'leverage': leverage,
+            'liquidation_price': liquidation_price,
             'opened_at': datetime.now().isoformat(),
             'confidence': signal['confidence'],
             'risk_reward': signal['risk_reward'],
@@ -88,8 +109,8 @@ class PaperTradingManager:
             'status': 'open'
         }
 
-        # Retirer le capital investi de la balance
-        self.balance -= position_size_usdt
+        # Retirer la marge (capital réel) de la balance, pas la position totale
+        self.balance -= margin_usdt
 
         self.open_positions.append(position)
         self.save_state()
@@ -97,7 +118,7 @@ class PaperTradingManager:
         return position, "Position ouverte avec succès"
 
     def update_positions(self, symbol, current_price):
-        """Met à jour les positions ouvertes et vérifie les TP/SL"""
+        """Met à jour les positions ouvertes et vérifie les TP/SL/Liquidation"""
         updated_positions = []
         closed_count = 0
 
@@ -109,10 +130,24 @@ class PaperTradingManager:
             # Mettre à jour le prix courant
             position['current_price'] = current_price
 
-            # Calculer le P&L
+            # Calculer le P&L (déjà amplifié par le levier via size_crypto)
             if position['type'] == 'LONG':
                 pnl_usdt = (current_price - position['entry_price']) * position['size_crypto']
                 pnl_percent = ((current_price - position['entry_price']) / position['entry_price']) * 100
+
+                # Calculer le P&L en % de la marge investie (avec effet de levier)
+                margin = position.get('margin_usdt', position.get('size_usdt', 0))
+                if margin > 0:
+                    pnl_percent_on_margin = (pnl_usdt / margin) * 100
+                else:
+                    pnl_percent_on_margin = 0
+
+                # Vérifier LIQUIDATION en premier
+                liquidation_price = position.get('liquidation_price')
+                if liquidation_price and current_price <= liquidation_price:
+                    self.close_position(position, liquidation_price, 'LIQUIDATED')
+                    closed_count += 1
+                    continue
 
                 # Vérifier TP/SL
                 if current_price >= position['tp']:
@@ -127,6 +162,20 @@ class PaperTradingManager:
                 pnl_usdt = (position['entry_price'] - current_price) * position['size_crypto']
                 pnl_percent = ((position['entry_price'] - current_price) / position['entry_price']) * 100
 
+                # Calculer le P&L en % de la marge investie (avec effet de levier)
+                margin = position.get('margin_usdt', position.get('size_usdt', 0))
+                if margin > 0:
+                    pnl_percent_on_margin = (pnl_usdt / margin) * 100
+                else:
+                    pnl_percent_on_margin = 0
+
+                # Vérifier LIQUIDATION en premier
+                liquidation_price = position.get('liquidation_price')
+                if liquidation_price and current_price >= liquidation_price:
+                    self.close_position(position, liquidation_price, 'LIQUIDATED')
+                    closed_count += 1
+                    continue
+
                 # Vérifier TP/SL
                 if current_price <= position['tp']:
                     self.close_position(position, current_price, 'TP_HIT')
@@ -139,6 +188,7 @@ class PaperTradingManager:
 
             position['pnl_usdt'] = pnl_usdt
             position['pnl_percent'] = pnl_percent
+            position['pnl_percent_on_margin'] = pnl_percent_on_margin
             updated_positions.append(position)
 
         self.open_positions = updated_positions
@@ -148,6 +198,9 @@ class PaperTradingManager:
 
     def close_position(self, position, exit_price, reason):
         """Ferme une position"""
+        # Récupérer la marge (capital réellement investi)
+        margin = position.get('margin_usdt', position.get('size_usdt', 0))
+
         # Calculer le P&L final
         if position['type'] == 'LONG':
             pnl_usdt = (exit_price - position['entry_price']) * position['size_crypto']
@@ -156,14 +209,30 @@ class PaperTradingManager:
             pnl_usdt = (position['entry_price'] - exit_price) * position['size_crypto']
             pnl_percent = ((position['entry_price'] - exit_price) / position['entry_price']) * 100
 
-        # Mettre à jour la balance
-        self.balance += position['size_usdt'] + pnl_usdt
+        # En cas de liquidation, limiter la perte à la marge investie
+        if reason == 'LIQUIDATED':
+            pnl_usdt = -margin  # Perte totale de la marge
+            pnl_percent = -100  # 100% de perte sur la marge
+
+        # Calculer le P&L en % de la marge (avec effet de levier)
+        if margin > 0:
+            pnl_percent_on_margin = (pnl_usdt / margin) * 100
+        else:
+            pnl_percent_on_margin = 0
+
+        # Mettre à jour la balance: rendre la marge + P&L (ou 0 si liquidé)
+        if reason == 'LIQUIDATED':
+            # En cas de liquidation, on perd toute la marge
+            self.balance += 0
+        else:
+            self.balance += margin + pnl_usdt
 
         # Finaliser la position
         position['exit_price'] = exit_price
         position['closed_at'] = datetime.now().isoformat()
         position['pnl_usdt'] = pnl_usdt
         position['pnl_percent'] = pnl_percent
+        position['pnl_percent_on_margin'] = pnl_percent_on_margin
         position['close_reason'] = reason
         position['status'] = 'closed'
 
@@ -180,9 +249,10 @@ class PaperTradingManager:
 
     def get_statistics(self):
         """Calcule les statistiques de performance"""
-        # Calculer le capital total (balance libre + capital dans positions ouvertes + P&L non réalisé)
-        open_capital = sum(p['size_usdt'] for p in self.open_positions)
-        open_pnl = sum(p['pnl_usdt'] for p in self.open_positions)
+        # Calculer le capital total (balance libre + marge dans positions ouvertes + P&L non réalisé)
+        # Utiliser margin_usdt car c'est le capital réellement investi
+        open_capital = sum(p.get('margin_usdt', p.get('size_usdt', 0)) for p in self.open_positions)
+        open_pnl = sum(p.get('pnl_usdt', 0) for p in self.open_positions)
         total_portfolio_value = self.balance + open_capital + open_pnl
 
         if not self.closed_positions:
@@ -236,15 +306,31 @@ class PaperTradingManager:
     def format_position_message(self, position, action="OPENED"):
         """Formate un message de position pour Pushover"""
         if action == "OPENED":
+            leverage = position.get('leverage', 1)
+            margin = position.get('margin_usdt', position.get('size_usdt', 0))
+            liquidation_price = position.get('liquidation_price')
+
             message = f"""
 📊 PAPER TRADING - Position ouverte
 
-{position['type']} sur {position['symbol']}
+{position['type']} sur {position['symbol']}"""
+
+            if leverage > 1:
+                message += f" (Levier {leverage}x)"
+
+            message += f"""
 
 Entrée: ${position['entry_price']:.4f}
 TP: ${position['tp']:.4f}
-SL: ${position['sl']:.4f}
-Taille: ${position['size_usdt']:.2f} ({position['size_crypto']:.6f})
+SL: ${position['sl']:.4f}"""
+
+            if liquidation_price:
+                message += f"""
+Liquidation: ${liquidation_price:.4f}"""
+
+            message += f"""
+Taille position: ${position['size_usdt']:.2f}
+Marge investie: ${margin:.2f}
 R/R: 1:{position['risk_reward']:.2f}
 
 Balance: ${self.balance:.2f}
@@ -253,21 +339,41 @@ Positions ouvertes: {len(self.open_positions)}/{getattr(config, 'PAPER_TRADING_M
         else:  # CLOSED
             emoji = "🟢" if position['pnl_usdt'] > 0 else "🔴"
 
+            # Emoji spécial pour liquidation
+            if position.get('close_reason') == 'LIQUIDATED':
+                emoji = "💀"
+
             # Calculer la valeur totale du portefeuille
             stats = self.get_statistics()
             portfolio_value = stats.get('total_portfolio_value', self.balance)
 
+            leverage = position.get('leverage', 1)
+            margin = position.get('margin_usdt', position.get('size_usdt', 0))
+            pnl_percent_on_margin = position.get('pnl_percent_on_margin', position.get('pnl_percent', 0))
+
             message = f"""
 {emoji} PAPER TRADING - Position fermée
 
-{position['type']} sur {position['symbol']}
+{position['type']} sur {position['symbol']}"""
+
+            if leverage > 1:
+                message += f" (Levier {leverage}x)"
+
+            message += f"""
 Raison: {position['close_reason']}
 
 Entrée: ${position['entry_price']:.4f}
 Sortie: ${position['exit_price']:.4f}
 Durée: {position.get('duration_hours', 0):.1f}h
 
-P&L: ${position['pnl_usdt']:.2f} ({position['pnl_percent']:.2f}%)
+P&L: ${position['pnl_usdt']:.2f}"""
+
+            if leverage > 1:
+                message += f" ({pnl_percent_on_margin:+.2f}% sur marge)"
+            else:
+                message += f" ({position['pnl_percent']:+.2f}%)"
+
+            message += f"""
 Portefeuille: ${portfolio_value:.2f} (ROI: {stats['roi']:.2f}%)
 
 Total trades: {len(self.closed_positions)}
