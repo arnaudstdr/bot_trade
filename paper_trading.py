@@ -189,6 +189,7 @@ class PaperTradingManager:
                 'worst_trade': 0,
                 'open_positions': len(self.open_positions),
                 'current_balance': self.balance,
+                'initial_balance': self.initial_balance,
                 'roi': 0
             }
 
