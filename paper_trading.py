@@ -149,6 +149,16 @@ class PaperTradingManager:
                     closed_count += 1
                     continue
 
+                # TRAILING STOP pour LONG
+                trailing_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
+                if trailing_enabled:
+                    trailing_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 0.5) / 100
+                    # Calculer le nouveau SL basé sur le prix actuel
+                    new_sl = current_price * (1 - trailing_percent)
+                    # Le SL ne peut que monter (jamais descendre)
+                    if new_sl > position['sl']:
+                        position['sl'] = new_sl
+
                 # Vérifier TP/SL
                 if current_price >= position['tp']:
                     self.close_position(position, current_price, 'TP_HIT')
@@ -175,6 +185,16 @@ class PaperTradingManager:
                     self.close_position(position, liquidation_price, 'LIQUIDATED')
                     closed_count += 1
                     continue
+
+                # TRAILING STOP pour SHORT
+                trailing_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
+                if trailing_enabled:
+                    trailing_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 0.5) / 100
+                    # Calculer le nouveau SL basé sur le prix actuel
+                    new_sl = current_price * (1 + trailing_percent)
+                    # Le SL ne peut que descendre (jamais monter)
+                    if new_sl < position['sl']:
+                        position['sl'] = new_sl
 
                 # Vérifier TP/SL
                 if current_price <= position['tp']:

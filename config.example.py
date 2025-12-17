@@ -41,3 +41,7 @@ PAPER_TRADING_TRACK_FILE = "data/paper_trading_history.json"  # Fichier d'histor
 PAPER_TRADING_LEVERAGE = 5  # Effet de levier (1 = pas de levier, 5 = 5x)
 PAPER_TRADING_SIMULATE_LIQUIDATION = True  # Simuler les liquidations
 PAPER_TRADING_LIQUIDATION_THRESHOLD = 0.8  # Seuil de liquidation (80% de perte sur la marge)
+
+# Trailing Stop (Stop Loss suiveur)
+PAPER_TRADING_TRAILING_STOP = True  # Activer le trailing stop
+PAPER_TRADING_TRAILING_STOP_PERCENT = 0.5  # Distance du trailing stop en % du prix (0.5%)
