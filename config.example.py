@@ -45,3 +45,7 @@ PAPER_TRADING_LIQUIDATION_THRESHOLD = 0.8  # Seuil de liquidation (80% de perte 
 # Trailing Stop (Stop Loss suiveur)
 PAPER_TRADING_TRAILING_STOP = True  # Activer le trailing stop
 PAPER_TRADING_TRAILING_STOP_PERCENT = 0.5  # Distance du trailing stop en % du prix (0.5%)
+
+# Trailing Take Profit (TP suiveur)
+PAPER_TRADING_TRAILING_TP = True  # Activer le trailing take profit
+PAPER_TRADING_TRAILING_TP_PERCENT = 2.0  # Distance du trailing TP en % du prix (2%)

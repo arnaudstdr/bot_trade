@@ -150,14 +150,30 @@ class PaperTradingManager:
                     continue
 
                 # TRAILING STOP pour LONG
-                trailing_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
-                if trailing_enabled:
-                    trailing_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 0.5) / 100
+                trailing_stop_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
+                if trailing_stop_enabled:
+                    trailing_stop_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 0.5) / 100
                     # Calculer le nouveau SL basé sur le prix actuel
-                    new_sl = current_price * (1 - trailing_percent)
+                    new_sl = current_price * (1 - trailing_stop_percent)
                     # Le SL ne peut que monter (jamais descendre)
                     if new_sl > position['sl']:
                         position['sl'] = new_sl
+
+                # TRAILING TAKE PROFIT pour LONG
+                trailing_tp_enabled = getattr(config, 'PAPER_TRADING_TRAILING_TP', False)
+                if trailing_tp_enabled:
+                    # Suivre le prix le plus haut atteint
+                    highest_price = position.get('highest_price', position['entry_price'])
+                    if current_price > highest_price:
+                        highest_price = current_price
+                        position['highest_price'] = highest_price
+
+                        # Calculer le nouveau TP basé sur le nouveau pic
+                        trailing_tp_percent = getattr(config, 'PAPER_TRADING_TRAILING_TP_PERCENT', 2.0) / 100
+                        new_tp = highest_price * (1 + trailing_tp_percent)
+                        # Le TP ne peut que monter (jamais descendre)
+                        if new_tp > position['tp']:
+                            position['tp'] = new_tp
 
                 # Vérifier TP/SL
                 if current_price >= position['tp']:
@@ -187,14 +203,30 @@ class PaperTradingManager:
                     continue
 
                 # TRAILING STOP pour SHORT
-                trailing_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
-                if trailing_enabled:
-                    trailing_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 0.5) / 100
+                trailing_stop_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
+                if trailing_stop_enabled:
+                    trailing_stop_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 0.5) / 100
                     # Calculer le nouveau SL basé sur le prix actuel
-                    new_sl = current_price * (1 + trailing_percent)
+                    new_sl = current_price * (1 + trailing_stop_percent)
                     # Le SL ne peut que descendre (jamais monter)
                     if new_sl < position['sl']:
                         position['sl'] = new_sl
+
+                # TRAILING TAKE PROFIT pour SHORT
+                trailing_tp_enabled = getattr(config, 'PAPER_TRADING_TRAILING_TP', False)
+                if trailing_tp_enabled:
+                    # Suivre le prix le plus bas atteint
+                    lowest_price = position.get('lowest_price', position['entry_price'])
+                    if current_price < lowest_price:
+                        lowest_price = current_price
+                        position['lowest_price'] = lowest_price
+
+                        # Calculer le nouveau TP basé sur le nouveau creux
+                        trailing_tp_percent = getattr(config, 'PAPER_TRADING_TRAILING_TP_PERCENT', 2.0) / 100
+                        new_tp = lowest_price * (1 - trailing_tp_percent)
+                        # Le TP ne peut que descendre (jamais monter pour un SHORT)
+                        if new_tp < position['tp']:
+                            position['tp'] = new_tp
 
                 # Vérifier TP/SL
                 if current_price <= position['tp']:
