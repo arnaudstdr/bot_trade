@@ -11,8 +11,8 @@ PUSHOVER_APP_TOKEN = "votre_app_token_ici"
 MISTRAL_API_KEY = "votre_api_key_mistral_ici"
 
 # Configuration de l'analyse
-TIMEFRAME = "5m"  # Timeframe pour le day trading (1m, 5m, 15m, 30m, 1h, 4h, 1d)
-CHECK_INTERVAL = 300  # Intervalle entre chaque analyse en secondes (300s = 5 min)
+TIMEFRAME = "15m"  # Timeframe pour le day trading (1m, 5m, 15m, 30m, 1h, 4h, 1d)
+CHECK_INTERVAL = 900  # Intervalle entre chaque analyse en secondes (900s = 15 min)
 
 # Cryptomonnaies à surveiller
 SYMBOLS = ['BTC/USDT', 'ETH/USDT', 'SOL/USDT', 'XRP/USDT', 'ADA/USDT']
@@ -44,7 +44,7 @@ PAPER_TRADING_LIQUIDATION_THRESHOLD = 0.8  # Seuil de liquidation (80% de perte 
 
 # Trailing Stop (Stop Loss suiveur)
 PAPER_TRADING_TRAILING_STOP = True  # Activer le trailing stop
-PAPER_TRADING_TRAILING_STOP_PERCENT = 0.5  # Distance du trailing stop en % du prix (0.5%)
+PAPER_TRADING_TRAILING_STOP_PERCENT = 1.0  # Distance du trailing stop en % du prix (1%)
 
 # Trailing Take Profit (TP suiveur)
 PAPER_TRADING_TRAILING_TP = True  # Activer le trailing take profit
