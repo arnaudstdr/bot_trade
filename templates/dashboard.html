@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bot Trading - Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Bot de Trading Autonome</h1>
+            <div class="bot-controls">
+                <button id="btn-start" class="btn btn-success">▶ Démarrer</button>
+                <button id="btn-stop" class="btn btn-danger">⏹ Arrêter</button>
+                <span class="bot-status" id="bot-status">●</span>
+                <span id="bot-status-text">Chargement...</span>
+            </div>
+        </header>
+
+        <!-- Section Stats -->
+        <section class="stats-section">
+            <h2>📊 Statistiques de Performance</h2>
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Portefeuille Total</div>
+                    <div class="stat-value" id="total-portfolio">$0.00</div>
+                    <div class="stat-change" id="portfolio-change">+0.00%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">ROI</div>
+                    <div class="stat-value" id="roi">0.00%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Balance Libre</div>
+                    <div class="stat-value" id="balance">$0.00</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Trades</div>
+                    <div class="stat-value" id="total-trades">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Win Rate</div>
+                    <div class="stat-value" id="win-rate">0%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">P&L Total</div>
+                    <div class="stat-value" id="total-pnl">$0.00</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Positions Ouvertes -->
+        <section class="positions-section">
+            <h2>📈 Positions Ouvertes (<span id="open-count">0</span>)</h2>
+            <div class="table-container">
+                <table id="open-positions-table">
+                    <thead>
+                        <tr>
+                            <th>Symbole</th>
+                            <th>Type</th>
+                            <th>Entrée</th>
+                            <th>Actuel</th>
+                            <th>TP</th>
+                            <th>SL</th>
+                            <th>Taille</th>
+                            <th>Levier</th>
+                            <th>P&L</th>
+                            <th>P&L %</th>
+                            <th>Durée</th>
+                        </tr>
+                    </thead>
+                    <tbody id="open-positions-body">
+                        <tr>
+                            <td colspan="11" class="no-data">Aucune position ouverte</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Historique des Trades -->
+        <section class="history-section">
+            <h2>📜 Historique des Trades (20 derniers)</h2>
+            <div class="table-container">
+                <table id="history-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Symbole</th>
+                            <th>Type</th>
+                            <th>Entrée</th>
+                            <th>Sortie</th>
+                            <th>Raison</th>
+                            <th>Taille</th>
+                            <th>Levier</th>
+                            <th>P&L</th>
+                            <th>P&L %</th>
+                            <th>Durée</th>
+                        </tr>
+                    </thead>
+                    <tbody id="history-body">
+                        <tr>
+                            <td colspan="11" class="no-data">Aucun trade fermé</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Configuration -->
+        <section class="config-section">
+            <h2>⚙️ Configuration</h2>
+            <div class="config-grid">
+                <div class="config-card">
+                    <h3>Trading</h3>
+                    <div class="config-item">
+                        <span>Cryptos surveillées:</span>
+                        <span id="config-symbols">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Timeframe:</span>
+                        <span id="config-timeframe">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Intervalle d'analyse:</span>
+                        <span id="config-interval">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Score minimum:</span>
+                        <span id="config-score">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Risk/Reward min:</span>
+                        <span id="config-rr">-</span>
+                    </div>
+                </div>
+                <div class="config-card">
+                    <h3>Paper Trading</h3>
+                    <div class="config-item">
+                        <span>Activé:</span>
+                        <span id="config-pt-enabled">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Capital initial:</span>
+                        <span id="config-pt-balance">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Taille position:</span>
+                        <span id="config-pt-size">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Max positions:</span>
+                        <span id="config-pt-max">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Effet de levier:</span>
+                        <span id="config-pt-leverage">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Trailing Stop:</span>
+                        <span id="config-pt-trailing-stop">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Trailing TP:</span>
+                        <span id="config-pt-trailing-tp">-</span>
+                    </div>
+                </div>
+                <div class="config-card">
+                    <h3>Horaires de Trading</h3>
+                    <div class="config-item">
+                        <span>Activé:</span>
+                        <span id="config-hours-enabled">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Horaires:</span>
+                        <span id="config-hours-range">-</span>
+                    </div>
+                    <div class="config-item">
+                        <span>Jours:</span>
+                        <span id="config-hours-days">-</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Logs -->
+        <section class="logs-section">
+            <h2>📝 Logs du Bot</h2>
+            <div class="logs-container" id="logs-container">
+                <div class="no-data">Aucun log disponible</div>
+            </div>
+        </section>
+    </div>
+
+    <footer>
+        <p>Dernière mise à jour: <span id="last-update">-</span></p>
+        <p>Auto-refresh toutes les 5 secondes</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
