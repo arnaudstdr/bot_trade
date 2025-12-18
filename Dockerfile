@@ -36,6 +36,10 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # Copier le code de l'application
 COPY --chown=trader:trader *.py .
 
+# Copier les templates et fichiers static pour l'interface web
+COPY --chown=trader:trader templates/ templates/
+COPY --chown=trader:trader static/ static/
+
 # Créer le répertoire pour les données persistantes
 RUN mkdir -p /app/data && chown trader:trader /app/data
 

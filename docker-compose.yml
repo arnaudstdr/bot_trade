@@ -39,3 +39,44 @@ services:
     labels:
       - "com.trading-agent.description=Agent de trading autonome"
       - "com.trading-agent.version=1.0"
+
+  web-interface:
+    build: .
+    container_name: trading-web
+    restart: unless-stopped
+    command: python3 web_interface.py
+
+    # Exposer le port de l'interface web
+    ports:
+      - "5005:5005"
+
+    volumes:
+      # Monter le fichier de configuration
+      - ./config.py:/app/config.py:ro
+
+      # Monter le répertoire data (partagé avec l'agent)
+      - ./data:/app/data
+
+      # Monter les templates et static
+      - ./templates:/app/templates:ro
+      - ./static:/app/static:ro
+
+    # Limites de ressources
+    mem_limit: 256m
+    cpus: 0.5
+
+    # Logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+    # L'interface web dépend de l'agent (pour les données)
+    depends_on:
+      - trading-agent
+
+    # Labels
+    labels:
+      - "com.trading-agent.description=Interface web du bot de trading"
+      - "com.trading-agent.version=1.0"
