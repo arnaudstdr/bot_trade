@@ -13,6 +13,7 @@
             <div class="bot-controls">
                 <button id="btn-start" class="btn btn-success">▶ Démarrer</button>
                 <button id="btn-stop" class="btn btn-danger">⏹ Arrêter</button>
+                <button id="btn-test-notif" class="btn btn-info" style="background: var(--accent-blue);" title="Tester les notifications">🔔</button>
                 <span class="bot-status" id="bot-status">●</span>
                 <span id="bot-status-text">Chargement...</span>
             </div>
@@ -195,9 +196,10 @@
 
     <footer>
         <p>Dernière mise à jour: <span id="last-update">-</span></p>
-        <p>Auto-refresh toutes les 5 secondes</p>
+        <p>Auto-refresh toutes les 5 secondes | 🔔 Notifications en temps réel</p>
     </footer>
 
+    <script src="{{ url_for('static', filename='notifications.js') }}"></script>
     <script src="{{ url_for('static', filename='app.js') }}"></script>
 </body>
 </html>

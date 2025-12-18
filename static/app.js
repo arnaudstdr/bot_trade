@@ -344,6 +344,16 @@ document.addEventListener('DOMContentLoaded', async () => {
     elements.btnStart.addEventListener('click', startBot);
     elements.btnStop.addEventListener('click', stopBot);
 
+    // Bouton de test des notifications
+    const btnTestNotif = document.getElementById('btn-test-notif');
+    if (btnTestNotif) {
+        btnTestNotif.addEventListener('click', () => {
+            if (window.notificationManager) {
+                window.notificationManager.sendTestNotification();
+            }
+        });
+    }
+
     // Première mise à jour
     await refreshAll();
     await updateConfig();
