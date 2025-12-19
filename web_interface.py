@@ -4,7 +4,7 @@ Interface Web pour le bot de trading
 Accessible depuis n'importe quel navigateur sur le réseau
 """
 
-from flask import Flask, render_template, jsonify, request, Response
+from flask import Flask, render_template, jsonify, request, Response, send_file
 import json
 import os
 from datetime import datetime
@@ -15,6 +15,8 @@ import signal
 import queue
 import threading
 import time
+import csv
+import io
 
 app = Flask(__name__)
 
@@ -221,6 +223,72 @@ def api_config():
             'days': config.TRADING_ENABLED_DAYS
         }
     })
+
+@app.route('/api/export/trades/csv')
+def export_trades_csv():
+    """API: Export des trades en format CSV"""
+    try:
+        # Récupérer les données de paper trading
+        pt = PaperTradingManager()
+        closed_positions = pt.closed_positions
+
+        if not closed_positions:
+            return jsonify({'success': False, 'message': 'Aucun trade fermé disponible'}), 404
+
+        # Créer un fichier CSV en mémoire
+        output = io.StringIO()
+        writer = csv.writer(output, quoting=csv.QUOTE_NONNUMERIC)
+
+        # Écrire l'en-tête
+        header = [
+            'ID', 'Symbole', 'Type', 'Prix Entrée', 'Prix Sortie', 'Taille (Crypto)',
+            'Taille (USDT)', 'Levier', 'P&L USDT', 'P&L %', 'Raison Fermeture',
+            'Date Ouverture', 'Date Fermeture', 'Durée (heures)', 'TP Atteint',
+            'SL Atteint', 'Liquidation'
+        ]
+        writer.writerow(header)
+
+        # Écrire les données
+        for position in closed_positions:
+            row = [
+                position.get('id', ''),
+                position.get('symbol', ''),
+                position.get('type', ''),
+                position.get('entry_price', ''),
+                position.get('exit_price', ''),
+                position.get('size_crypto', ''),
+                position.get('size_usdt', ''),
+                position.get('leverage', 1),
+                position.get('pnl_usdt', ''),
+                position.get('pnl_percent', ''),
+                position.get('close_reason', ''),
+                position.get('open_time', ''),
+                position.get('close_time', ''),
+                position.get('duration_hours', ''),
+                'OUI' if position.get('tp_hit') else 'NON',
+                'OUI' if position.get('sl_hit') else 'NON',
+                'OUI' if position.get('close_reason') == 'LIQUIDATED' else 'NON'
+            ]
+            writer.writerow(row)
+
+        # Préparer la réponse
+        output.seek(0)
+        mem = io.BytesIO()
+        mem.write(output.getvalue().encode('utf-8'))
+        mem.seek(0)
+
+        # Générer un nom de fichier avec la date
+        filename = f"trades_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+
+        return send_file(
+            mem,
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name=filename
+        )
+
+    except Exception as e:
+        return jsonify({'success': False, 'message': f'Erreur lors de l\'export: {str(e)}'}), 500
 
 @app.route('/api/logs')
 def api_logs():

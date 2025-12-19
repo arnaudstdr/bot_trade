@@ -318,6 +318,29 @@ footer {
     font-size: 14px;
 }
 
+/* Export Section */
+.export-section {
+    margin-top: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.export-status {
+    font-size: 0.9em;
+    color: var(--text-secondary);
+}
+
+.export-status.success {
+    color: var(--success);
+}
+
+.export-status.error {
+    color: var(--error);
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     header {

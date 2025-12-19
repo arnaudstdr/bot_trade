@@ -336,6 +336,74 @@ async function refreshAll() {
     elements.lastUpdate.textContent = new Date().toLocaleTimeString('fr-FR');
 }
 
+// Fonction pour exporter les trades en CSV
+function exportTradesToCSV() {
+    const exportStatus = document.getElementById('export-status');
+    const exportButton = document.getElementById('btn-export-csv');
+    
+    if (!exportStatus || !exportButton) {
+        console.error('Éléments d\'export non trouvés');
+        return;
+    }
+    
+    exportStatus.textContent = 'Préparation de l\'export...';
+    exportStatus.className = 'export-status';
+    exportButton.disabled = true;
+    
+    fetch('/api/export/trades/csv')
+        .then(response => {
+            // Vérifier le content-type pour déterminer si c'est du JSON ou du CSV
+            const contentType = response.headers.get('content-type');
+            
+            if (contentType && contentType.includes('application/json')) {
+                // C'est une réponse JSON (erreur)
+                return response.json().then(data => {
+                    if (!response.ok) {
+                        throw new Error(data.message || 'Aucun trade disponible');
+                    }
+                    return data;
+                });
+            } else if (response.ok) {
+                // C'est un fichier CSV
+                return response.blob();
+            } else {
+                // Autre type d'erreur
+                throw new Error('Erreur serveur lors de l\'export');
+            }
+        })
+        .then(result => {
+            if (result instanceof Blob) {
+                // Télécharger le fichier CSV
+                const url = window.URL.createObjectURL(result);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `trades_export_${new Date().toISOString().slice(0, 10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+                
+                exportStatus.textContent = '✓ Export réussi !';
+                exportStatus.className = 'export-status success';
+            } else {
+                // Cas inattendu
+                console.error('Réponse inattendue:', result);
+                throw new Error('Format de réponse inattendu');
+            }
+        })
+        .catch(error => {
+            console.error('Erreur export:', error);
+            exportStatus.textContent = `✗ ${error.message}`;
+            exportStatus.className = 'export-status error';
+        })
+        .finally(() => {
+            setTimeout(() => {
+                exportButton.disabled = false;
+                exportStatus.textContent = '';
+            }, 5000);
+        });
+}
+
 // Initialisation
 document.addEventListener('DOMContentLoaded', async () => {
     console.log('🚀 Interface initialisée');
@@ -352,6 +420,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.notificationManager.sendTestNotification();
             }
         });
+    }
+
+    // Bouton d'export CSV
+    const btnExportCSV = document.getElementById('btn-export-csv');
+    if (btnExportCSV) {
+        btnExportCSV.addEventListener('click', exportTradesToCSV);
     }
 
     // Première mise à jour

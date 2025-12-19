@@ -22,6 +22,20 @@ class PaperTradingManager:
     def load_state(self):
         """Charge l'état du paper trading depuis le fichier"""
         try:
+            # Vérifier si un fichier de test existe pour le développement
+            test_file = 'data/paper_trading_data.json'
+            if os.path.exists(test_file):
+                with open(test_file, 'r') as f:
+                    data = json.load(f)
+                    self.balance = data.get('balance', self.initial_balance)
+                    self.initial_balance = data.get('initial_balance', self.initial_balance)
+                    self.open_positions = data.get('open_positions', [])
+                    self.closed_positions = data.get('closed_positions', [])
+                    print(f"✓ Chargé depuis le fichier de test: {test_file}")
+                    print(f"  - {len(self.closed_positions)} trades fermés disponibles pour les tests")
+                    return
+
+            # Sinon, utiliser le fichier normal
             if os.path.exists(self.track_file):
                 with open(self.track_file, 'r') as f:
                     data = json.load(f)
@@ -29,8 +43,11 @@ class PaperTradingManager:
                     self.initial_balance = data.get('initial_balance', self.initial_balance)
                     self.open_positions = data.get('open_positions', [])
                     self.closed_positions = data.get('closed_positions', [])
+                    print(f"✓ Chargé depuis {self.track_file}")
+            else:
+                print(f"⚠️ Aucun fichier de paper trading trouvé ({self.track_file})")
         except Exception as e:
-            print(f"Erreur lors du chargement du paper trading: {e}")
+            print(f"✗ Erreur lors du chargement du paper trading: {e}")
 
     def save_state(self):
         """Sauvegarde l'état du paper trading"""
