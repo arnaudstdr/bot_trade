@@ -26,9 +26,6 @@ NOTIFICATIONS_FILE = "data/notifications.json"
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-# File de notifications pour SSE
-notification_queue = queue.Queue()
-
 # Stockage des positions précédentes pour détecter les changements
 previous_positions = {
     'open': [],
@@ -82,37 +79,37 @@ def get_bot_status():
         'check_interval': config.CHECK_INTERVAL // 60  # en minutes
     }
 
-def send_notification(notification_type, title, message, data=None):
-    """Envoie une notification à tous les clients connectés"""
-    notification = {
-        'type': notification_type,
-        'title': title,
-        'message': message,
-        'data': data or {},
-        'timestamp': datetime.now().isoformat()
-    }
-
-    # Ajouter à la file
-    notification_queue.put(notification)
-
-    # Sauvegarder dans le fichier pour persistance
-    try:
-        notifications = []
-        if os.path.exists(NOTIFICATIONS_FILE):
-            with open(NOTIFICATIONS_FILE, 'r') as f:
-                notifications = json.load(f)
-
-        notifications.append(notification)
-        # Garder seulement les 50 dernières
-        notifications = notifications[-50:]
-
-        with open(NOTIFICATIONS_FILE, 'w') as f:
-            json.dump(notifications, f, indent=2)
-    except Exception as e:
-        print(f"Erreur sauvegarde notification: {e}")
+# def send_notification(notification_type, title, message, data=None):
+#     """Envoie une notification à tous les clients connectés"""
+#     notification = {
+#         'type': notification_type,
+#         'title': title,
+#         'message': message,
+#         'data': data or {},
+#         'timestamp': datetime.now().isoformat()
+#     }
+#
+#     # Ajouter à la file
+#     notification_queue.put(notification)
+#
+#     # Sauvegarder dans le fichier pour persistance
+#     try:
+#         notifications = []
+#         if os.path.exists(NOTIFICATIONS_FILE):
+#             with open(NOTIFICATIONS_FILE, 'r') as f:
+#                 notifications = json.load(f)
+#
+#         notifications.append(notification)
+#         # Garder seulement les 50 dernières
+#         notifications = notifications[-50:]
+#
+#         with open(NOTIFICATIONS_FILE, 'w') as f:
+#             json.dump(notifications, f, indent=2)
+#     except Exception as e:
+#         print(f"Erreur sauvegarde notification: {e}")
 
 def monitor_positions():
-    """Surveille les changements de positions et envoie des notifications"""
+    """Surveille les changements de positions"""
     global previous_positions
 
     while True:
@@ -120,36 +117,6 @@ def monitor_positions():
             data = get_paper_trading_data()
             current_open = data['open_positions']
             current_closed = data['closed_positions']
-
-            # Détecter nouvelles positions ouvertes
-            prev_open_ids = [p['id'] for p in previous_positions['open']]
-            for position in current_open:
-                if position['id'] not in prev_open_ids:
-                    # Nouvelle position ouverte
-                    pnl_potential = abs(position['tp'] - position['entry_price']) * position['size_crypto']
-                    send_notification(
-                        'position_opened',
-                        f"📈 {position['type']} {position['symbol']}",
-                        f"Position ouverte à ${position['entry_price']:.4f} (Levier {position.get('leverage', 1)}x)\nTP: ${position['tp']:.4f} | SL: ${position['sl']:.4f}\nGain potentiel: ${pnl_potential:.2f}",
-                        position
-                    )
-
-            # Détecter positions fermées
-            prev_closed_ids = [p['id'] for p in previous_positions['closed']]
-            for position in current_closed:
-                if position['id'] not in prev_closed_ids:
-                    # Position fermée
-                    pnl = position.get('pnl_usdt', 0)
-                    emoji = "🟢" if pnl > 0 else "🔴"
-                    if position.get('close_reason') == 'LIQUIDATED':
-                        emoji = "💀"
-
-                    send_notification(
-                        'position_closed',
-                        f"{emoji} Position fermée - {position['symbol']}",
-                        f"{position['type']} fermé: {position.get('close_reason', 'UNKNOWN')}\nP&L: ${pnl:.2f} ({position.get('pnl_percent', 0):.2f}%)\nDurée: {position.get('duration_hours', 0):.1f}h",
-                        position
-                    )
 
             # Mettre à jour les positions précédentes
             previous_positions['open'] = current_open
@@ -268,36 +235,36 @@ def api_logs():
     except Exception as e:
         return jsonify({'logs': [f'Erreur de lecture du log: {str(e)}']})
 
-@app.route('/api/notifications')
-def api_notifications():
-    """API: Récupère les notifications récentes"""
-    try:
-        if os.path.exists(NOTIFICATIONS_FILE):
-            with open(NOTIFICATIONS_FILE, 'r') as f:
-                notifications = json.load(f)
-                return jsonify({'notifications': notifications[-20:]})  # 20 dernières
-        else:
-            return jsonify({'notifications': []})
-    except Exception as e:
-        return jsonify({'notifications': [], 'error': str(e)})
+# @app.route('/api/notifications')
+# def api_notifications():
+#     """API: Récupère les notifications récentes"""
+#     try:
+#         if os.path.exists(NOTIFICATIONS_FILE):
+#             with open(NOTIFICATIONS_FILE, 'r') as f:
+#                 notifications = json.load(f)
+#                 return jsonify({'notifications': notifications[-20:]})  # 20 dernières
+#         else:
+#             return jsonify({'notifications': []})
+#     except Exception as e:
+#         return jsonify({'notifications': [], 'error': str(e)})
 
-@app.route('/api/stream')
-def stream():
-    """Server-Sent Events: Flux de notifications en temps réel"""
-    def event_stream():
-        # Envoyer un événement de connexion
-        yield f"data: {json.dumps({'type': 'connected', 'message': 'Connecté au flux de notifications'})}\n\n"
-
-        while True:
-            try:
-                # Attendre une notification (timeout de 30s pour envoyer un heartbeat)
-                notification = notification_queue.get(timeout=30)
-                yield f"data: {json.dumps(notification)}\n\n"
-            except queue.Empty:
-                # Heartbeat pour garder la connexion active
-                yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
-
-    return Response(event_stream(), mimetype='text/event-stream')
+# @app.route('/api/stream')
+# def stream():
+#     """Server-Sent Events: Flux de notifications en temps réel"""
+#     def event_stream():
+#         # Envoyer un événement de connexion
+#         yield f"data: {json.dumps({'type': 'connected', 'message': 'Connecté au flux de notifications'})}\n\n"
+#
+#         while True:
+#             try:
+#                 # Attendre une notification (timeout de 30s pour envoyer un heartbeat)
+#                 notification = notification_queue.get(timeout=30)
+#                 yield f"data: {json.dumps(notification)}\n\n"
+#             except queue.Empty:
+#                 # Heartbeat pour garder la connexion active
+#                 yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
+#
+#     return Response(event_stream(), mimetype='text/event-stream')
 
 if __name__ == '__main__':
     print("\n" + "="*70)
@@ -311,8 +278,7 @@ if __name__ == '__main__':
     # Démarrer le thread de monitoring des positions
     monitor_thread = threading.Thread(target=monitor_positions, daemon=True)
     monitor_thread.start()
-    print("✓ Monitoring des positions démarré")
-    print("✓ Notifications en temps réel activées\n")
+    print("✓ Monitoring des positions démarré\n")
 
     # Démarrer le serveur accessible depuis le réseau
     app.run(host='0.0.0.0', port=5005, debug=False, threaded=True)
