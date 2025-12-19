@@ -451,6 +451,7 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                             continue
 
                         # Ouvrir une position paper trading si activé
+                        position_opened = False
                         if self.paper_trading:
                             position, msg = self.paper_trading.open_position(signal, analysis)
                             if position:
@@ -459,11 +460,16 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                                 pt_message = self.paper_trading.format_position_message(position, "OPENED")
                                 pt_title = f"📊 PAPER - {signal['type']} {symbol}"
                                 self.send_pushover_notification(pt_title, pt_message, priority=1)
+                                self.mark_signal_as_sent(symbol, signal['type'])
+                                print(f"✅ {symbol}: Position ouverte et alerte envoyée!")
+                                position_opened = True
                             else:
                                 print(f"⚠️  {symbol}: Impossible d'ouvrir position paper trading - {msg}")
+                                print(f"   Notification non envoyée car position non ouverte")
 
-                        # Signal validé, envoi de l'alerte
-                        message = f"""
+                        # Signal validé, envoi de l'alerte (seulement si paper trading désactivé)
+                        if not self.paper_trading and not position_opened:
+                            message = f"""
 {signal['type']} sur {symbol}
 
 Prix: ${signal['entry']:.4f}
@@ -481,11 +487,11 @@ Tendance: {analysis['trend']}
 RSI: {analysis['rsi']:.1f}
 """
 
-                        title = f"🚀 {signal['type']} {symbol}"
+                            title = f"🚀 {signal['type']} {symbol}"
 
-                        if self.send_pushover_notification(title, message, priority=1):
-                            self.mark_signal_as_sent(symbol, signal['type'])
-                            print(f"✅ {symbol}: Alerte {signal['type']} envoyée!")
+                            if self.send_pushover_notification(title, message, priority=1):
+                                self.mark_signal_as_sent(symbol, signal['type'])
+                                print(f"✅ {symbol}: Alerte {signal['type']} envoyée!")
                     else:
                         print(f"❌ {symbol}: Signal {signal['type']} rejeté par le LLM")
                         print(f"   Raison: {llm_validation.get('analysis', 'N/A')}")

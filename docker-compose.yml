@@ -1,11 +1,22 @@
+# UTILISATION:
+#
+# Mode interface web (par défaut) - l'interface contrôle le bot:
+#   docker compose up -d
+#   Accès: http://localhost:5005
+#
+# Mode standalone - bot qui tourne seul sans interface:
+#   docker compose --profile standalone up -d
+#
+# Arrêter:
+#   docker compose down
+
 services:
+  # Mode standalone : bot qui tourne seul sans interface
   trading-agent:
+    profiles: ["standalone"]
     build: .
     container_name: trading-agent
     restart: unless-stopped
-
-    # Variables d'environnement depuis config.py
-    # Le conteneur utilise directement le fichier config.py monté
 
     volumes:
       # Monter le fichier de configuration
@@ -37,9 +48,10 @@ services:
 
     # Labels pour l'organisation
     labels:
-      - "com.trading-agent.description=Agent de trading autonome"
+      - "com.trading-agent.description=Agent de trading autonome (mode standalone)"
       - "com.trading-agent.version=1.0"
 
+  # Interface web avec contrôle du bot (mode par défaut)
   web-interface:
     build: .
     container_name: trading-web
@@ -61,9 +73,9 @@ services:
       - ./templates:/app/templates:ro
       - ./static:/app/static:ro
 
-    # Limites de ressources
-    mem_limit: 256m
-    cpus: 0.5
+    # Limites de ressources (augmentées pour héberger bot + interface)
+    mem_limit: 768m
+    cpus: 1.5
 
     # Logs
     logging:
@@ -72,11 +84,7 @@ services:
         max-size: "10m"
         max-file: "3"
 
-    # L'interface web dépend de l'agent (pour les données)
-    depends_on:
-      - trading-agent
-
     # Labels
     labels:
-      - "com.trading-agent.description=Interface web du bot de trading"
+      - "com.trading-agent.description=Interface web avec contrôle du bot de trading"
       - "com.trading-agent.version=1.0"
