@@ -404,6 +404,8 @@ R/R: 1:{position['risk_reward']:.2f}
 
 Balance: ${self.balance:.2f}
 Positions ouvertes: {len(self.open_positions)}/{getattr(config, 'PAPER_TRADING_MAX_POSITIONS', 3)}
+
+🔗 Lien Bitget: {bitget_url}
 """
         else:  # CLOSED
             emoji = "🟢" if position['pnl_usdt'] > 0 else "🔴"
@@ -419,6 +421,9 @@ Positions ouvertes: {len(self.open_positions)}/{getattr(config, 'PAPER_TRADING_M
             leverage = position.get('leverage', 1)
             margin = position.get('margin_usdt', position.get('size_usdt', 0))
             pnl_percent_on_margin = position.get('pnl_percent_on_margin', position.get('pnl_percent', 0))
+
+            # Générer l'URL Bitget
+            bitget_url = f"https://www.bitget.site/fr/futures/usdt/{position['symbol']}"
 
             message = f"""
 {emoji} PAPER TRADING - Position fermée
@@ -447,6 +452,8 @@ Portefeuille: ${portfolio_value:.2f} (ROI: {stats['roi']:.2f}%)
 
 Total trades: {len(self.closed_positions)}
 Win rate: {(len([p for p in self.closed_positions if p['pnl_usdt'] > 0]) / len(self.closed_positions) * 100):.1f}%
+
+🔗 Lien Bitget: {bitget_url}
 """
         return message
 

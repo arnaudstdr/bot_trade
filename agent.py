@@ -279,6 +279,11 @@ class TradingAgent:
 
         return signal
 
+    def generate_bitget_url(self, symbol):
+        """Génère l'URL Bitget pour une paire de trading"""
+        # Format: https://www.bitget.site/fr/futures/usdt/BTCUSDT
+        return f"https://www.bitget.site/fr/futures/usdt/{symbol}"
+
     def validate_signal_with_llm(self, analysis, signal):
         """Valide le signal avec Mistral AI"""
         prompt = f"""Tu es un expert en trading de cryptomonnaies. Analyse ce signal de trading et donne ton avis.
@@ -445,6 +450,9 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                     llm_validation = self.validate_signal_with_llm(analysis, signal)
 
                     if llm_validation.get('valid', False):
+                        # Générer l'URL Bitget
+                        bitget_url = self.generate_bitget_url(symbol)
+                        
                         # Vérifier les horaires de trading avant d'envoyer
                         if not self.is_trading_hours():
                             print(f"⏰ {symbol}: Signal {signal['type']} validé mais hors horaires de trading (Lun-Ven 9h-20h)")
@@ -485,6 +493,8 @@ Analyse LLM:
 
 Tendance: {analysis['trend']}
 RSI: {analysis['rsi']:.1f}
+
+🔗 Lien Bitget: {bitget_url}
 """
 
                             title = f"🚀 {signal['type']} {symbol}"
