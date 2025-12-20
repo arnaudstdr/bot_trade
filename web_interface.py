@@ -214,6 +214,7 @@ def api_config():
             'max_positions': getattr(config, 'PAPER_TRADING_MAX_POSITIONS', 3),
             'leverage': getattr(config, 'PAPER_TRADING_LEVERAGE', 1),
             'trailing_stop': getattr(config, 'PAPER_TRADING_TRAILING_STOP', False),
+            'fixed_tp': getattr(config, 'PAPER_TRADING_FIXED_TP', True),
             'trailing_tp': getattr(config, 'PAPER_TRADING_TRAILING_TP', False)
         },
         'trading_hours': {

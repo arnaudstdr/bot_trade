@@ -36,6 +36,7 @@ const elements = {
     configPTMax: document.getElementById('config-pt-max'),
     configPTLeverage: document.getElementById('config-pt-leverage'),
     configPTTrailingStop: document.getElementById('config-pt-trailing-stop'),
+    configPTFixedTP: document.getElementById('config-pt-fixed-tp'),
     configPTTrailingTP: document.getElementById('config-pt-trailing-tp'),
     configHoursEnabled: document.getElementById('config-hours-enabled'),
     configHoursRange: document.getElementById('config-hours-range'),
@@ -237,6 +238,7 @@ async function updateConfig() {
         elements.configPTMax.textContent = pt.max_positions;
         elements.configPTLeverage.textContent = `${pt.leverage}x`;
         elements.configPTTrailingStop.textContent = pt.trailing_stop ? '✓ Oui' : '✗ Non';
+        elements.configPTFixedTP.textContent = pt.fixed_tp ? '✓ Oui' : '✗ Non';
         elements.configPTTrailingTP.textContent = pt.trailing_tp ? '✓ Oui' : '✗ Non';
 
         // Trading hours
