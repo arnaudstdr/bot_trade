@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bot Trading - Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Font Awesome pour les icônes -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
     <div class="container">
@@ -69,11 +71,12 @@
                             <th>P&L</th>
                             <th>P&L %</th>
                             <th>Durée</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="open-positions-body">
                         <tr>
-                            <td colspan="11" class="no-data">Aucune position ouverte</td>
+                            <td colspan="12" class="no-data">Aucune position ouverte</td>
                         </tr>
                     </tbody>
                 </table>
@@ -98,11 +101,12 @@
                             <th>P&L</th>
                             <th>P&L %</th>
                             <th>Durée</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="history-body">
                         <tr>
-                            <td colspan="11" class="no-data">Aucun trade fermé</td>
+                            <td colspan="12" class="no-data">Aucun trade fermé</td>
                         </tr>
                     </tbody>
                 </table>

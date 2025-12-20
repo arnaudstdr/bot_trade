@@ -133,12 +133,15 @@ async function updatePositions() {
         elements.openCount.textContent = openPositions.length;
 
         if (openPositions.length === 0) {
-            elements.openPositionsBody.innerHTML = '<tr><td colspan="11" class="no-data">Aucune position ouverte</td></tr>';
+            elements.openPositionsBody.innerHTML = '<tr><td colspan="12" class="no-data">Aucune position ouverte</td></tr>';
         } else {
             elements.openPositionsBody.innerHTML = openPositions.map(pos => {
                 const pnl = pos.pnl_usdt || 0;
                 const pnlPercent = pos.pnl_percent_on_margin || pos.pnl_percent || 0;
                 const leverage = pos.leverage || 1;
+                
+                // Générer l'URL Bitget pour cette paire
+                const bitgetUrl = `https://www.bitget.site/fr/futures/usdt/${pos.symbol}`;
 
                 return `
                     <tr>
@@ -153,6 +156,11 @@ async function updatePositions() {
                         <td class="${pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}">${formatCurrency(pnl)}</td>
                         <td class="${pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}">${formatPercent(pnlPercent)}</td>
                         <td>${calculateDuration(pos.opened_at)}</td>
+                        <td>
+                            <a href="${bitgetUrl}" target="_blank" class="btn-action bitget-link" title="Ouvrir sur Bitget">
+                                <i class="fas fa-external-link-alt"></i> Bitget
+                            </a>
+                        </td>
                     </tr>
                 `;
             }).join('');
@@ -161,7 +169,7 @@ async function updatePositions() {
         // Historique
         const closedPositions = data.closed || [];
         if (closedPositions.length === 0) {
-            elements.historyBody.innerHTML = '<tr><td colspan="11" class="no-data">Aucun trade fermé</td></tr>';
+            elements.historyBody.innerHTML = '<tr><td colspan="12" class="no-data">Aucun trade fermé</td></tr>';
         } else {
             elements.historyBody.innerHTML = closedPositions.reverse().map(pos => {
                 const pnl = pos.pnl_usdt || 0;
@@ -173,6 +181,9 @@ async function updatePositions() {
                 if (pos.close_reason === 'TP_HIT') reasonEmoji = '🎯';
                 else if (pos.close_reason === 'SL_HIT') reasonEmoji = '🛑';
                 else if (pos.close_reason === 'LIQUIDATED') reasonEmoji = '💀';
+
+                // Générer l'URL Bitget pour cette paire
+                const bitgetUrl = `https://www.bitget.site/fr/futures/usdt/${pos.symbol}`;
 
                 return `
                     <tr>
@@ -187,6 +198,11 @@ async function updatePositions() {
                         <td class="${pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}">${formatCurrency(pnl)}</td>
                         <td class="${pnl >= 0 ? 'pnl-positive' : 'pnl-negative'}">${formatPercent(pnlPercent)}</td>
                         <td>${pos.duration_hours ? pos.duration_hours.toFixed(1) + 'h' : '-'}</td>
+                        <td>
+                            <a href="${bitgetUrl}" target="_blank" class="btn-action bitget-link" title="Ouvrir sur Bitget">
+                                <i class="fas fa-external-link-alt"></i> Bitget
+                            </a>
+                        </td>
                     </tr>
                 `;
             }).join('');

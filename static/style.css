@@ -571,3 +571,38 @@ footer {
         gap: 12px;
     }
 }
+
+/* Bitget Link Button */
+.btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.btn-action:hover {
+    background: var(--bg-tertiary);
+    border-color: var(--accent-blue);
+    transform: translateY(-1px);
+}
+
+.btn-action.bitget-link {
+    color: var(--text-primary);
+}
+
+.btn-action.bitget-link:hover {
+    color: var(--accent-blue);
+}
+
+.btn-action i {
+    font-size: 12px;
+}
