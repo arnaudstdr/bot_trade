@@ -140,8 +140,9 @@ async function updatePositions() {
                 const pnlPercent = pos.pnl_percent_on_margin || pos.pnl_percent || 0;
                 const leverage = pos.leverage || 1;
                 
-                // Générer l'URL Bitget pour cette paire
-                const bitgetUrl = `https://www.bitget.site/fr/futures/usdt/${pos.symbol}`;
+                // Générer l'URL Bitget pour cette paire (nettoyer le symbole en enlevant les /)
+                const cleanSymbol = pos.symbol.replace('/', '');
+                const bitgetUrl = `https://www.bitget.site/fr/futures/usdt/${cleanSymbol}`;
 
                 return `
                     <tr>
@@ -182,8 +183,9 @@ async function updatePositions() {
                 else if (pos.close_reason === 'SL_HIT') reasonEmoji = '🛑';
                 else if (pos.close_reason === 'LIQUIDATED') reasonEmoji = '💀';
 
-                // Générer l'URL Bitget pour cette paire
-                const bitgetUrl = `https://www.bitget.site/fr/futures/usdt/${pos.symbol}`;
+                // Générer l'URL Bitget pour cette paire (nettoyer le symbole en enlevant les /)
+                const cleanSymbol = pos.symbol.replace('/', '');
+                const bitgetUrl = `https://www.bitget.site/fr/futures/usdt/${cleanSymbol}`;
 
                 return `
                     <tr>

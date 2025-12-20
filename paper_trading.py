@@ -408,8 +408,9 @@ Positions ouvertes: {len(self.open_positions)}/{getattr(config, 'PAPER_TRADING_M
             margin = position.get('margin_usdt', position.get('size_usdt', 0))
             pnl_percent_on_margin = position.get('pnl_percent_on_margin', position.get('pnl_percent', 0))
 
-            # Générer l'URL Bitget
-            bitget_url = f"https://www.bitget.site/fr/futures/usdt/{position['symbol']}"
+            # Générer l'URL Bitget (nettoyer le symbole en enlevant les /)
+            clean_symbol = position['symbol'].replace('/', '')
+            bitget_url = f"https://www.bitget.site/fr/futures/usdt/{clean_symbol}"
 
             message = f"""
 {emoji} PAPER TRADING - Position fermée

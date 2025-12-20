@@ -281,8 +281,10 @@ class TradingAgent:
 
     def generate_bitget_url(self, symbol):
         """Génère l'URL Bitget pour une paire de trading"""
+        # Nettoyer le symbole en remplaçant les / par rien pour obtenir ETHUSDT au lieu de ETH/USDT
+        clean_symbol = symbol.replace('/', '')
         # Format: https://www.bitget.site/fr/futures/usdt/BTCUSDT
-        return f"https://www.bitget.site/fr/futures/usdt/{symbol}"
+        return f"https://www.bitget.site/fr/futures/usdt/{clean_symbol}"
 
     def validate_signal_with_llm(self, analysis, signal):
         """Valide le signal avec Mistral AI"""
