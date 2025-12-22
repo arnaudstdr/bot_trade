@@ -48,7 +48,7 @@ PAPER_TRADING_TRAILING_STOP_PERCENT = 1.5  # Distance du trailing stop en % du p
 
 # Take Profit fixe (remplace le trailing TP)
 PAPER_TRADING_FIXED_TP = True  # Activer le take profit fixe
-PAPER_TRADING_FIXED_TP_PERCENT = 3.0  # Take profit fixe en % du prix d'entrée (3%)
+PAPER_TRADING_FIXED_TP_PERCENT = 2.0  # Take profit fixe en % du prix d'entrée (2%)
 
 # Trailing Take Profit (TP suiveur) - Désactivé
 PAPER_TRADING_TRAILING_TP = False  # Désactiver le trailing take profit
