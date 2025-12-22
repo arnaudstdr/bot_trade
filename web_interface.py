@@ -11,8 +11,6 @@ from datetime import datetime
 from paper_trading import PaperTradingManager
 import config
 import subprocess
-import signal
-import queue
 import threading
 import time
 import csv
@@ -81,34 +79,7 @@ def get_bot_status():
         'check_interval': config.CHECK_INTERVAL // 60  # en minutes
     }
 
-# def send_notification(notification_type, title, message, data=None):
-#     """Envoie une notification à tous les clients connectés"""
-#     notification = {
-#         'type': notification_type,
-#         'title': title,
-#         'message': message,
-#         'data': data or {},
-#         'timestamp': datetime.now().isoformat()
-#     }
-#
-#     # Ajouter à la file
-#     notification_queue.put(notification)
-#
-#     # Sauvegarder dans le fichier pour persistance
-#     try:
-#         notifications = []
-#         if os.path.exists(NOTIFICATIONS_FILE):
-#             with open(NOTIFICATIONS_FILE, 'r') as f:
-#                 notifications = json.load(f)
-#
-#         notifications.append(notification)
-#         # Garder seulement les 50 dernières
-#         notifications = notifications[-50:]
-#
-#         with open(NOTIFICATIONS_FILE, 'w') as f:
-#             json.dump(notifications, f, indent=2)
-#     except Exception as e:
-#         print(f"Erreur sauvegarde notification: {e}")
+
 
 def monitor_positions():
     """Surveille les changements de positions"""
@@ -304,36 +275,9 @@ def api_logs():
     except Exception as e:
         return jsonify({'logs': [f'Erreur de lecture du log: {str(e)}']})
 
-# @app.route('/api/notifications')
-# def api_notifications():
-#     """API: Récupère les notifications récentes"""
-#     try:
-#         if os.path.exists(NOTIFICATIONS_FILE):
-#             with open(NOTIFICATIONS_FILE, 'r') as f:
-#                 notifications = json.load(f)
-#                 return jsonify({'notifications': notifications[-20:]})  # 20 dernières
-#         else:
-#             return jsonify({'notifications': []})
-#     except Exception as e:
-#         return jsonify({'notifications': [], 'error': str(e)})
 
-# @app.route('/api/stream')
-# def stream():
-#     """Server-Sent Events: Flux de notifications en temps réel"""
-#     def event_stream():
-#         # Envoyer un événement de connexion
-#         yield f"data: {json.dumps({'type': 'connected', 'message': 'Connecté au flux de notifications'})}\n\n"
-#
-#         while True:
-#             try:
-#                 # Attendre une notification (timeout de 30s pour envoyer un heartbeat)
-#                 notification = notification_queue.get(timeout=30)
-#                 yield f"data: {json.dumps(notification)}\n\n"
-#             except queue.Empty:
-#                 # Heartbeat pour garder la connexion active
-#                 yield f"data: {json.dumps({'type': 'heartbeat'})}\n\n"
-#
-#     return Response(event_stream(), mimetype='text/event-stream')
+
+
 
 if __name__ == '__main__':
     print("\n" + "="*70)
