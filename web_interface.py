@@ -9,6 +9,7 @@ import json
 import os
 import signal
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from paper_trading import PaperTradingManager
 import config
 import subprocess
@@ -251,7 +252,8 @@ def export_trades_csv():
         mem.seek(0)
 
         # Générer un nom de fichier avec la date
-        filename = f"trades_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
+        paris_tz = ZoneInfo("Europe/Paris")
+        filename = f"trades_export_{datetime.now(paris_tz).strftime('%Y%m%d_%H%M%S')}.csv"
 
         return send_file(
             mem,

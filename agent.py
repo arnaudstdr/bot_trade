@@ -11,6 +11,7 @@ import json
 import requests
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from mistralai import Mistral
 import config
 from paper_trading import PaperTradingManager
@@ -28,6 +29,7 @@ class TradingAgent:
         self.exchange = ccxt.binance()
         self.mistral_client = Mistral(api_key=config.MISTRAL_API_KEY)
         self.active_signals = self.load_state()
+        self.paris_tz = ZoneInfo("Europe/Paris")
 
         # Initialiser le paper trading si activé
         paper_trading_enabled = getattr(config, 'PAPER_TRADING_ENABLED', False)
@@ -36,6 +38,10 @@ class TradingAgent:
             print(f"📊 Paper Trading activé - Balance: ${self.paper_trading.balance:.2f}")
         else:
             self.paper_trading = None
+
+    def now(self):
+        """Retourne l'heure actuelle avec le fuseau horaire de Paris"""
+        return datetime.now(self.paris_tz)
 
     def load_state(self):
         """Charge l'état des signaux actifs depuis le fichier"""
@@ -55,7 +61,7 @@ class TradingAgent:
         if not config.TRADING_HOURS_ENABLED:
             return True
 
-        now = datetime.now()
+        now = self.now()
         current_hour = now.hour
         current_day = now.weekday()  # 0=Lundi, 6=Dimanche
 
@@ -384,7 +390,7 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
         if signal_key in self.active_signals:
             # Vérifier si le signal est encore récent (moins de 4 heures)
             last_time = datetime.fromisoformat(self.active_signals[signal_key])
-            time_diff = (datetime.now() - last_time).total_seconds()
+            time_diff = (self.now() - last_time).total_seconds()
 
             if time_diff < 14400:  # 4 heures
                 return True
@@ -398,13 +404,13 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
     def mark_signal_as_sent(self, symbol, signal_type):
         """Marque un signal comme envoyé"""
         signal_key = f"{symbol}_{signal_type}"
-        self.active_signals[signal_key] = datetime.now().isoformat()
+        self.active_signals[signal_key] = self.now().isoformat()
         self.save_state()
 
     def analyze_and_alert(self):
         """Analyse toutes les cryptos et envoie des alertes si nécessaire"""
         print(f"\n{'='*70}")
-        print(f"🔍 Scan du marché - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"🔍 Scan du marché - {self.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         # Afficher le statut du paper trading
         if self.paper_trading:

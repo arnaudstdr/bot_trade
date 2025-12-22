@@ -6,6 +6,7 @@ Gestionnaire de Paper Trading (Mode simulation)
 import json
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import config
 
 class PaperTradingManager:
@@ -17,7 +18,12 @@ class PaperTradingManager:
         self.initial_balance = initial_balance
         self.open_positions = []
         self.closed_positions = []
+        self.paris_tz = ZoneInfo("Europe/Paris")
         self.load_state()
+
+    def now(self):
+        """Retourne l'heure actuelle avec le fuseau horaire de Paris"""
+        return datetime.now(self.paris_tz)
 
     def load_state(self):
         """Charge l'état du paper trading depuis le fichier"""
@@ -57,7 +63,7 @@ class PaperTradingManager:
                 'initial_balance': self.initial_balance,
                 'open_positions': self.open_positions,
                 'closed_positions': self.closed_positions,
-                'last_update': datetime.now().isoformat()
+                'last_update': self.now().isoformat()
             }
             with open(self.track_file, 'w') as f:
                 json.dump(data, f, indent=2)
@@ -106,7 +112,7 @@ class PaperTradingManager:
 
         # Créer la position
         position = {
-            'id': f"{analysis['symbol']}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            'id': f"{analysis['symbol']}_{self.now().strftime('%Y%m%d_%H%M%S')}",
             'symbol': analysis['symbol'],
             'type': signal['type'],
             'entry_price': signal['entry'],
@@ -118,7 +124,7 @@ class PaperTradingManager:
             'size_crypto': position_size_crypto,
             'leverage': leverage,
             'liquidation_price': liquidation_price,
-            'opened_at': datetime.now().isoformat(),
+            'opened_at': self.now().isoformat(),
             'confidence': signal['confidence'],
             'risk_reward': signal['risk_reward'],
             'pnl_usdt': 0,
@@ -284,7 +290,7 @@ class PaperTradingManager:
 
         # Finaliser la position
         position['exit_price'] = exit_price
-        position['closed_at'] = datetime.now().isoformat()
+        position['closed_at'] = self.now().isoformat()
         position['pnl_usdt'] = pnl_usdt
         position['pnl_percent'] = pnl_percent
         position['pnl_percent_on_margin'] = pnl_percent_on_margin
