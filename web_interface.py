@@ -7,6 +7,7 @@ Accessible depuis n'importe quel navigateur sur le réseau
 from flask import Flask, render_template, jsonify, request, Response, send_file
 import json
 import os
+import signal
 from datetime import datetime
 from paper_trading import PaperTradingManager
 import config
