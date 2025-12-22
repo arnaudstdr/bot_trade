@@ -30,6 +30,9 @@ TRADING_HOURS_START = 9   # Début des notifications à 9h
 TRADING_HOURS_END = 20    # Fin des notifications à 20h
 TRADING_ENABLED_DAYS = [0, 1, 2, 3, 4]  # Lun-Ven (0=Lundi, 6=Dimanche)
 
+# Période de refroidissement après fermeture de position
+COOLDOWN_PERIOD_HOURS = 1  # Nombre d'heures à attendre avant de rouvrir une position sur la même paire
+
 # Paper Trading (Mode simulation)
 PAPER_TRADING_ENABLED = True  # Activer le trading simulé
 PAPER_TRADING_INITIAL_BALANCE = 1000  # Capital de départ en USDT

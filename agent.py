@@ -31,6 +31,10 @@ class TradingAgent:
         self.active_signals = self.load_state()
         self.paris_tz = ZoneInfo("Europe/Paris")
 
+        # Période de refroidissement après fermeture de position (en heures)
+        self.cooldown_period_hours = getattr(config, 'COOLDOWN_PERIOD_HOURS', 1)
+        self.recently_closed_positions = {}  # {symbol: datetime}
+
         # Initialiser le paper trading si activé
         paper_trading_enabled = getattr(config, 'PAPER_TRADING_ENABLED', False)
         if paper_trading_enabled:
@@ -42,6 +46,24 @@ class TradingAgent:
     def now(self):
         """Retourne l'heure actuelle avec le fuseau horaire de Paris"""
         return datetime.now(self.paris_tz)
+
+    def is_symbol_in_cooldown(self, symbol):
+        """Vérifie si une paire est en période de refroidissement après fermeture"""
+        if symbol not in self.recently_closed_positions:
+            return False
+
+        last_closed_time = self.recently_closed_positions[symbol]
+        cooldown_seconds = self.cooldown_period_hours * 3600
+        time_since_closure = (self.now() - last_closed_time).total_seconds()
+
+        if time_since_closure < cooldown_seconds:
+            remaining_time = cooldown_seconds - time_since_closure
+            print(f"⏳ {symbol} est en période de refroidissement ({remaining_time/3600:.1f}h restant)")
+            return True
+        else:
+            # Période de refroidissement terminée, supprimer de la liste
+            del self.recently_closed_positions[symbol]
+            return False
 
     def load_state(self):
         """Charge l'état des signaux actifs depuis le fichier"""
@@ -439,6 +461,9 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                                 message = self.paper_trading.format_position_message(position, "CLOSED")
                                 title = f"{'🟢' if position['pnl_usdt'] > 0 else '🔴'} Position fermée - {symbol}"
                                 self.send_pushover_notification(title, message, priority=1)
+                                # Ajouter à la liste des positions récemment fermées pour la période de refroidissement
+                                self.recently_closed_positions[symbol] = self.now()
+                                print(f"⏳ Période de refroidissement démarrée pour {symbol} ({self.cooldown_period_hours}h)")
 
                 signal = self.generate_trading_signal(analysis)
 
@@ -460,10 +485,14 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                     if llm_validation.get('valid', False):
                         # Générer l'URL Bitget
                         bitget_url = self.generate_bitget_url(symbol)
-                        
+
                         # Vérifier les horaires de trading avant d'envoyer
                         if not self.is_trading_hours():
                             print(f"⏰ {symbol}: Signal {signal['type']} validé mais hors horaires de trading (Lun-Ven 9h-20h)")
+                            continue
+
+                        # Vérifier la période de refroidissement pour cette paire
+                        if self.is_symbol_in_cooldown(symbol):
                             continue
 
                         # Ouvrir une position paper trading si activé
