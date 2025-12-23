@@ -450,6 +450,10 @@ Win rate: {(len([p for p in self.closed_positions if p['pnl_usdt'] > 0]) / len(s
 """
         return message
 
+    def has_open_position(self, symbol):
+        """Vérifie si une position est déjà ouverte sur ce symbole"""
+        return any(position['symbol'] == symbol for position in self.open_positions)
+
     def get_open_position_by_symbol(self, symbol):
         """Récupère une position ouverte par symbole"""
         for position in self.open_positions:

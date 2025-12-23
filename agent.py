@@ -35,6 +35,9 @@ class TradingAgent:
         self.cooldown_period_hours = getattr(config, 'COOLDOWN_PERIOD_HOURS', 1)
         self.recently_closed_positions = {}  # {symbol: datetime}
 
+        # Suivi des positions virtuelles (pour éviter les doublons même en mode notification)
+        self.virtual_positions = {}  # {symbol: {'type': signal_type, 'opened_at': datetime}}
+
         # Initialiser le paper trading si activé
         paper_trading_enabled = getattr(config, 'PAPER_TRADING_ENABLED', False)
         if paper_trading_enabled:
@@ -64,6 +67,14 @@ class TradingAgent:
             # Période de refroidissement terminée, supprimer de la liste
             del self.recently_closed_positions[symbol]
             return False
+
+    def has_open_position(self, symbol):
+        """Vérifie si une position est déjà ouverte sur cette paire"""
+        if self.paper_trading:
+            return self.paper_trading.has_open_position(symbol)
+        else:
+            # En mode notification, vérifier les positions virtuelles
+            return symbol in self.virtual_positions
 
     def load_state(self):
         """Charge l'état des signaux actifs depuis le fichier"""
@@ -429,16 +440,55 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
         self.active_signals[signal_key] = self.now().isoformat()
         self.save_state()
 
+    def mark_virtual_position_opened(self, symbol, signal_type):
+        """Marque une position virtuelle comme ouverte (pour le mode notification)"""
+        self.virtual_positions[symbol] = {
+            'type': signal_type,
+            'opened_at': self.now()
+        }
+
+    def mark_virtual_position_closed(self, symbol):
+        """Marque une position virtuelle comme fermée"""
+        if symbol in self.virtual_positions:
+            del self.virtual_positions[symbol]
+
+    def cleanup_old_virtual_positions(self):
+        """Nettoie les positions virtuelles trop anciennes (plus de 24h)"""
+        now = self.now()
+        symbols_to_remove = []
+        
+        for symbol, position_data in self.virtual_positions.items():
+            opened_at = position_data['opened_at']
+            age_hours = (now - opened_at).total_seconds() / 3600
+            
+            # Si la position virtuelle a plus de 24h, la supprimer
+            if age_hours > 24:
+                symbols_to_remove.append(symbol)
+                print(f"🧹 Nettoyage: Position virtuelle {symbol} trop ancienne ({age_hours:.1f}h)")
+        
+        for symbol in symbols_to_remove:
+            del self.virtual_positions[symbol]
+
     def analyze_and_alert(self):
         """Analyse toutes les cryptos et envoie des alertes si nécessaire"""
         print(f"\n{'='*70}")
         print(f"🔍 Scan du marché - {self.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # Nettoyer les positions virtuelles trop anciennes
+        self.cleanup_old_virtual_positions()
 
         # Afficher le statut du paper trading
         if self.paper_trading:
             stats = self.paper_trading.get_statistics()
             portfolio_value = stats.get('total_portfolio_value', stats['current_balance'])
             print(f"💰 Paper Trading: ${portfolio_value:.2f} (Libre: ${stats['current_balance']:.2f}) | ROI: {stats['roi']:.2f}% | Trades: {stats['total_trades']} | Win Rate: {stats['win_rate']:.1f}%")
+        else:
+            # Afficher les positions virtuelles en mode notification
+            if self.virtual_positions:
+                print(f"📊 Positions virtuelles: {len(self.virtual_positions)} ouverte(s)")
+                for symbol, pos in self.virtual_positions.items():
+                    age_hours = (self.now() - pos['opened_at']).total_seconds() / 3600
+                    print(f"   {symbol} ({pos['type']}) - {age_hours:.1f}h")
 
         print(f"{'='*70}\n")
 
@@ -463,6 +513,8 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                                 self.send_pushover_notification(title, message, priority=1)
                                 # Ajouter à la liste des positions récemment fermées pour la période de refroidissement
                                 self.recently_closed_positions[symbol] = self.now()
+                                # Supprimer aussi de la liste des positions virtuelles si elle existe
+                                self.mark_virtual_position_closed(symbol)
                                 print(f"⏳ Période de refroidissement démarrée pour {symbol} ({self.cooldown_period_hours}h)")
 
                 signal = self.generate_trading_signal(analysis)
@@ -495,6 +547,11 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
                         if self.is_symbol_in_cooldown(symbol):
                             continue
 
+                        # Vérifier si une position est déjà ouverte sur cette paire
+                        if self.has_open_position(symbol):
+                            print(f"❌ {symbol}: Position déjà ouverte sur cette paire, impossible d'en ouvrir une nouvelle")
+                            continue
+
                         # Ouvrir une position paper trading si activé
                         position_opened = False
                         if self.paper_trading:
@@ -514,6 +571,12 @@ Sois critique et objectif. Ne valide que les signaux vraiment solides."""
 
                         # Signal validé, envoi de l'alerte (seulement si paper trading désactivé)
                         if not self.paper_trading and not position_opened:
+                            # Vérifier si une position est déjà ouverte sur cette paire (même en mode notification)
+                            # En mode notification, nous devons aussi éviter les doublons
+                            if self.is_signal_already_active(symbol, signal['type']):
+                                print(f"⏭️  {symbol}: Signal {signal['type']} déjà actif, ignoré")
+                                continue
+
                             message = f"""
 {signal['type']} sur {symbol}
 
@@ -538,6 +601,7 @@ RSI: {analysis['rsi']:.1f}
 
                             if self.send_pushover_notification(title, message, priority=1):
                                 self.mark_signal_as_sent(symbol, signal['type'])
+                                self.mark_virtual_position_opened(symbol, signal['type'])
                                 print(f"✅ {symbol}: Alerte {signal['type']} envoyée!")
                     else:
                         print(f"❌ {symbol}: Signal {signal['type']} rejeté par le LLM")
