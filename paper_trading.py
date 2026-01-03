@@ -125,6 +125,8 @@ class PaperTradingManager:
             'leverage': leverage,
             'liquidation_price': liquidation_price,
             'opened_at': self.now().isoformat(),
+            'highest_price': signal['entry'],
+            'lowest_price': signal['entry'],
             'confidence': signal['confidence'],
             'risk_reward': signal['risk_reward'],
             'pnl_usdt': 0,
@@ -176,11 +178,15 @@ class PaperTradingManager:
                 trailing_stop_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
                 if trailing_stop_enabled:
                     trailing_stop_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 1.5) / 100
-                    # Calculer le nouveau SL basé sur le prix actuel
-                    new_sl = current_price * (1 - trailing_stop_percent)
-                    # Le SL ne peut que monter (jamais descendre)
-                    if new_sl > position['sl']:
-                        position['sl'] = new_sl
+                    # Ne remonter le SL que si un nouveau plus haut est atteint
+                    highest_price = position.get('highest_price', position['entry_price'])
+                    if current_price > highest_price:
+                        highest_price = current_price
+                        position['highest_price'] = highest_price
+                        new_sl = highest_price * (1 - trailing_stop_percent)
+                        # Le SL ne peut que monter (jamais descendre)
+                        if new_sl > position['sl']:
+                            position['sl'] = new_sl
 
                 # TAKE PROFIT FIXE pour LONG (remplace le trailing TP)
                 fixed_tp_enabled = getattr(config, 'PAPER_TRADING_FIXED_TP', True)
@@ -222,11 +228,15 @@ class PaperTradingManager:
                 trailing_stop_enabled = getattr(config, 'PAPER_TRADING_TRAILING_STOP', False)
                 if trailing_stop_enabled:
                     trailing_stop_percent = getattr(config, 'PAPER_TRADING_TRAILING_STOP_PERCENT', 1.5) / 100
-                    # Calculer le nouveau SL basé sur le prix actuel
-                    new_sl = current_price * (1 + trailing_stop_percent)
-                    # Le SL ne peut que descendre (jamais monter)
-                    if new_sl < position['sl']:
-                        position['sl'] = new_sl
+                    # Ne baisser le SL que si un nouveau plus bas est atteint
+                    lowest_price = position.get('lowest_price', position['entry_price'])
+                    if current_price < lowest_price:
+                        lowest_price = current_price
+                        position['lowest_price'] = lowest_price
+                        new_sl = lowest_price * (1 + trailing_stop_percent)
+                        # Le SL ne peut que descendre (jamais monter)
+                        if new_sl < position['sl']:
+                            position['sl'] = new_sl
 
                 # TAKE PROFIT FIXE pour SHORT (remplace le trailing TP)
                 fixed_tp_enabled = getattr(config, 'PAPER_TRADING_FIXED_TP', True)

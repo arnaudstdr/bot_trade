@@ -254,6 +254,8 @@ class TradingAgent:
         # Calcul dynamique des TP/SL basés sur l'ATR
         atr_multiplier_tp = 2.5
         atr_multiplier_sl = 1.5
+        fixed_tp_enabled = getattr(config, 'PAPER_TRADING_FIXED_TP', True)
+        fixed_tp_percent = getattr(config, 'PAPER_TRADING_FIXED_TP_PERCENT', 3.0) / 100
 
         signal = None
 
@@ -277,34 +279,20 @@ class TradingAgent:
             analysis['score'] >= config.MIN_CONFIDENCE_SCORE
         ]
 
-        # Conditions alternatives pour LONG (rebond sur support, sans EMA)
-        long_support = [
-            analysis['price'] <= analysis['bb_low'] * 1.02,
-            analysis['rsi'] < 35,
-            analysis['trend'] != "BAISSIERE"
-        ]
-
-        # Conditions alternatives pour SHORT (rejet de résistance, sans EMA)
-        short_resistance = [
-            analysis['price'] >= analysis['bb_high'] * 0.98,
-            analysis['rsi'] > 65,
-            analysis['trend'] != "HAUSSIERE"
-        ]
-
         # VÉRIFICATION OBLIGATOIRE DE L'EMA + conditions
-        if ema_cross_bullish and (sum(long_conditions) >= 3 or sum(long_support) >= 2):
+        if ema_cross_bullish and sum(long_conditions) >= 3:
             signal = {
                 'type': 'LONG',
                 'entry': price,
-                'tp': price + (atr * atr_multiplier_tp),
+                'tp': price * (1 + fixed_tp_percent) if fixed_tp_enabled else price + (atr * atr_multiplier_tp),
                 'sl': price - (atr * atr_multiplier_sl),
                 'confidence': analysis['score']
             }
-        elif ema_cross_bearish and (sum(short_conditions) >= 3 or sum(short_resistance) >= 2):
+        elif ema_cross_bearish and sum(short_conditions) >= 3:
             signal = {
                 'type': 'SHORT',
                 'entry': price,
-                'tp': price - (atr * atr_multiplier_tp),
+                'tp': price * (1 - fixed_tp_percent) if fixed_tp_enabled else price - (atr * atr_multiplier_tp),
                 'sl': price + (atr * atr_multiplier_sl),
                 'confidence': analysis['score']
             }
